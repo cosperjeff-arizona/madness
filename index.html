@@ -1,1276 +1,777 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>March Madness Engine — 2026</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #0a0e17;
-  --surface: #111827;
-  --surface2: #1a2236;
-  --border: #1e293b;
-  --text: #e2e8f0;
-  --text2: #94a3b8;
-  --accent: #f97316;
-  --accent2: #fb923c;
-  --green: #22c55e;
-  --red: #ef4444;
-  --blue: #3b82f6;
-  --purple: #a855f7;
-  --gold: #eab308;
-  --radius: 8px;
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Sora',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
-.mono { font-family:'DM Mono',monospace; }
-header { padding:24px 32px; display:flex; align-items:center; gap:20px; border-bottom:1px solid var(--border); background:linear-gradient(135deg,var(--surface),var(--bg)); }
-header h1 { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
-header h1 span { color:var(--accent); }
-header .subtitle { color:var(--text2); font-size:13px; font-weight:300; }
-.tabs { display:flex; gap:0; border-bottom:1px solid var(--border); background:var(--surface); padding:0 24px; }
-.tab { padding:14px 24px; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; user-select:none; }
-.tab:hover { color:var(--text); }
-.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
-.panel { display:none; padding:24px 32px; max-width:1400px; }
-.panel.active { display:block; }
-.btn { font-family:'Sora',sans-serif; padding:10px 24px; border:none; border-radius:var(--radius); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
-.btn-primary { background:var(--accent); color:#000; }
-.btn-primary:hover { background:var(--accent2); transform:translateY(-1px); }
-.sim-controls { display:flex; gap:16px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
-.sim-count { display:flex; align-items:center; gap:8px; }
-.sim-count label { font-size:12px; color:var(--text2); }
-.sim-count select { font-family:'DM Mono',monospace; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; font-size:13px; }
-.results-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; margin-bottom:24px; }
-.result-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
-.result-card h3 { font-size:13px; color:var(--text2); margin-bottom:12px; text-transform:uppercase; letter-spacing:1px; }
-.team-result { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); }
-.team-result:last-child { border:none; }
-.team-result .name { font-size:13px; font-weight:600; }
-.team-result .seed-badge { font-family:'DM Mono',monospace; font-size:10px; background:var(--surface2); padding:2px 6px; border-radius:4px; color:var(--text2); margin-right:6px; }
-.team-result .pct { font-family:'DM Mono',monospace; font-size:14px; font-weight:500; }
-.prob-bar { height:6px; background:var(--surface2); border-radius:3px; margin-top:4px; overflow:hidden; }
-.prob-bar-fill { height:100%; border-radius:3px; }
-.weights-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:20px; }
-.weight-group { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; }
-.weight-group h3 { font-size:14px; font-weight:600; margin-bottom:4px; }
-.weight-group p { font-size:11px; color:var(--text2); margin-bottom:14px; line-height:1.5; }
-.slider-row { display:flex; align-items:center; gap:12px; }
-.slider-row input[type=range] { flex:1; accent-color:var(--accent); height:6px; }
-.slider-val { font-family:'DM Mono',monospace; font-size:14px; min-width:40px; text-align:right; color:var(--accent); }
-.matchup-container { display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; }
-.matchup-picker { flex:1; min-width:280px; }
-.matchup-picker label { display:block; font-size:12px; color:var(--text2); margin-bottom:6px; text-transform:uppercase; letter-spacing:1px; }
-.matchup-picker select { width:100%; font-family:'Sora',sans-serif; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:var(--radius); padding:12px; font-size:14px; }
-.matchup-detail { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-top:20px; }
-.matchup-bar { display:flex; height:40px; border-radius:var(--radius); overflow:hidden; margin:16px 0; }
-.matchup-bar .side { display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; min-width:40px; }
-.matchup-bar .side-a { background:var(--blue); }
-.matchup-bar .side-b { background:var(--red); }
-.matchup-stats { display:grid; grid-template-columns:1fr auto 1fr; gap:8px; font-size:13px; }
-.matchup-stats .label { text-align:center; color:var(--text2); font-size:11px; text-transform:uppercase; }
-.matchup-stats .val-a { text-align:right; font-family:'DM Mono',monospace; }
-.matchup-stats .val-b { text-align:left; font-family:'DM Mono',monospace; }
-.bracket-region { margin-bottom:32px; }
-.bracket-region h2 { font-size:16px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
-.bracket-region h2 .dot { width:10px; height:10px; border-radius:50%; }
-.bracket-matchup { display:flex; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:6px; padding:8px 14px; gap:12px; font-size:13px; }
-.bracket-matchup .seed { font-family:'DM Mono',monospace; font-size:11px; color:var(--text2); min-width:24px; }
-.bracket-matchup .tname { flex:1; font-weight:500; }
-.bracket-matchup .wpct { font-family:'DM Mono',monospace; font-size:12px; min-width:50px; text-align:right; }
-.data-table-wrap { overflow-x:auto; }
-table.data-table { width:100%; border-collapse:collapse; font-size:12px; }
-table.data-table th { text-align:left; padding:10px 12px; border-bottom:2px solid var(--border); color:var(--text2); font-size:11px; text-transform:uppercase; letter-spacing:.5px; background:var(--bg); }
-table.data-table td { padding:8px 12px; border-bottom:1px solid var(--border); }
-table.data-table td input { font-family:'DM Mono',monospace; background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:4px; width:60px; font-size:12px; text-align:center; }
-table.data-table tr:hover { background:var(--surface); }
-.note-box { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:var(--radius); padding:14px 18px; margin-bottom:20px; font-size:12px; color:var(--text2); line-height:1.6; }
-.note-box strong { color:var(--text); }
-.diag { background:#1a1400; border:1px solid #3d3200; border-radius:var(--radius); padding:12px 16px; margin-bottom:16px; font-family:'DM Mono',monospace; font-size:11px; color:#eab308; line-height:1.8; }
-/* Bracket Visualization */
-.bkt-wrapper { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:16px; }
-.bkt-region-title { font-size:14px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
-.bkt-region-title .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
-.bkt { display:flex; align-items:stretch; overflow-x:auto; }
-.bkt-round { display:flex; flex-direction:column; justify-content:center; min-width:140px; padding-right:4px; }
-.bkt-round-label { font-size:9px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; text-align:center; padding:4px 0; opacity:0.6; }
-.bkt-game { display:flex; flex-direction:column; justify-content:center; flex:1; padding:2px 0; }
-.bkt-team { padding:3px 6px; font-size:10px; font-family:'DM Mono',monospace; white-space:nowrap; border-right:2px solid var(--border); background:var(--surface); line-height:1.6; }
-.bkt-game .bkt-team:first-child { border-bottom:1px solid var(--border); }
-.bkt-team.win { color:var(--green); font-weight:600; }
-.bkt-team.lose { color:var(--text2); opacity:0.5; }
-.bkt-team.upset { background:#1a1012; }
-.bkt-round:last-child .bkt-team { border-right:none; }
-.bkt-ff { display:flex; justify-content:center; gap:48px; margin:20px 0; flex-wrap:wrap; }
-.bkt-ff-game { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 20px; min-width:200px; text-align:center; }
-.bkt-ff-label { font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
-.bkt-ff-team { font-size:13px; font-weight:600; padding:3px 0; }
-.bkt-ff-team.win { color:var(--green); }
-.bkt-ff-team.lose { color:var(--text2); opacity:0.5; }
-.bkt-champ { text-align:center; margin:16px 0 24px; }
-.bkt-champ-label { font-size:11px; color:var(--gold); text-transform:uppercase; letter-spacing:2px; font-weight:700; margin-bottom:8px; }
-.bkt-champ-name { font-size:28px; font-weight:800; color:var(--gold); }
-.bkt-champ-seed { font-family:'DM Mono',monospace; font-size:14px; color:var(--text2); }
-@media(max-width:900px) { .bkt-wrapper { grid-template-columns:1fr; } }
-@media(max-width:768px) {
-  header { padding:16px; }
-  .panel { padding:16px; }
-  .tabs { padding:0 12px; overflow-x:auto; }
-  .tab { padding:12px 16px; white-space:nowrap; }
-}
-</style>
-</head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Almanac · Calendar</title>
+  <link rel="stylesheet" href="styles/theme.css">
+  <link rel="stylesheet" href="styles/components.css">
+  <style>
+    .day-popover {
+      position: absolute;
+      z-index: 100;
+      min-width: 200px;
+      max-width: 280px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      padding: 10px 12px;
+      font-size: 0.8rem;
+    }
+    .day-popover-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--ink);
+      font-size: 0.85rem;
+    }
+    .day-popover-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .day-popover-close:hover { color: var(--ink); }
+    .day-popover-item {
+      padding: 4px 6px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 3px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .day-popover-item:hover { filter: brightness(1.2); }
+    .cal-more-link {
+      font-size: 0.65rem;
+      color: var(--muted);
+      padding: 1px 4px;
+      cursor: pointer;
+    }
+    .cal-more-link:hover { color: var(--ink); text-decoration: underline; }
+    .cal-meal-label {
+      font-size: 0.6rem;
+      color: var(--accent);
+      opacity: 0.8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 2px;
+      line-height: 1.4;
+      cursor: default;
+    }
+  </style></head>
 <body>
-<header>
-  <div>
-    <h1>MADNESS <span>ENGINE</span></h1>
-    <div class="subtitle">2026 NCAA Tournament · Monte Carlo Simulator</div>
+  <div class="header">
+    <div class="brand">Almanac</div>
+    <nav class="nav">
+      <a href="index.html" class="nav-link">Dashboard</a>
+      <a href="calendar.html" class="nav-link active">Calendar</a>
+      <a href="horizon.html" class="nav-link">Horizon</a>
+      <a href="backlog.html" class="nav-link">Backlog</a>
+      <button class="btn-theme" onclick="toggleTheme()">◑</button>
+    </nav>
   </div>
-</header>
-<div class="tabs">
-  <div class="tab active" data-tab="bracket">Bracket</div>
-  <div class="tab" data-tab="matchup">Matchup</div>
-  <div class="tab" data-tab="weights">Weights</div>
-  <div class="tab" data-tab="data">Team Data</div>
-  <div class="tab" data-tab="method">Methodology</div>
-</div>
+  <div class="container" id="app">
+    <div class="loading-state">Loading calendar...</div>
+  </div>
 
-<div id="bracket-panel" class="panel active">
-  <div class="sim-controls">
-    <button class="btn btn-primary" onclick="runFullSim()">&#9654; Run Monte Carlo</button>
-    <div class="sim-count">
-      <label>Simulations:</label>
-      <select id="sim-count">
-        <option value="1000">1,000</option>
-        <option value="5000" selected>5,000</option>
-        <option value="10000">10,000</option>
-        <option value="25000">25,000</option>
-        <option value="50000">50,000</option>
-        <option value="100000">100,000</option>
-        <option value="250000">250,000</option>
-        <option value="500000">500,000</option>
-        <option value="1000000">1,000,000</option>
-      </select>
-    </div>
-    <button class="btn btn-primary" onclick="runOneBracket()" style="background:var(--green)">&#9734; Pick One Bracket</button>
-    <button class="btn btn-secondary" onclick="document.getElementById('filter-panel').style.display=document.getElementById('filter-panel').style.display==='none'?'block':'none'" style="font-size:11px">&#9881; Filters</button>
-    <span id="sim-status" class="mono" style="font-size:12px;color:var(--text2)"></span>
-  </div>
-  <div id="filter-panel" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px">
-    <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--accent)">Bracket Filters <span style="font-weight:300;color:var(--text2);font-size:11px">— applied to "Pick One Bracket" only</span></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
-      <div>
-        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Champion</label>
-        <select id="f-champ" style="width:100%;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px">
-          <option value="">Any team</option>
-        </select>
+  <!-- Event Modal -->
+  <div class="modal-overlay" id="event-modal">
+    <div class="modal">
+      <div class="modal-title">
+        <span id="modal-title-text">New Event</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
-      <div>
-        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Team Must Reach...</label>
-        <div style="display:flex;gap:4px">
-          <select id="f-team-reach" style="flex:2;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 4px">
-            <option value="">Any</option>
-          </select>
-          <select id="f-team-round" style="flex:1;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 4px">
-            <option value="r32">R32</option>
-            <option value="s16">S16</option>
-            <option value="e8" selected>E8</option>
-            <option value="ff">FF</option>
-          </select>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input type="text" class="form-input" id="evt-title" placeholder="Event name...">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="date" class="form-input" id="evt-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date <span style="font-weight:400;text-transform:none">(optional)</span></label>
+            <input type="date" class="form-input" id="evt-end-date" placeholder="Same day">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" id="evt-category"></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Time</label>
+            <select class="form-select" id="evt-time">
+              <option value="">None</option>
+              <option value="morning">Morning</option>
+              <option value="afternoon">Afternoon</option>
+              <option value="evening">Evening</option>
+              <option value="all-day">All Day</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-select" id="evt-priority">
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Repeats</label>
+            <select class="form-select" id="evt-recurs" onchange="toggleRecurEnd()">
+              <option value="">Never</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="annual">Annually</option>
+            </select>
+          </div>
+          <div class="form-group" id="recur-end-group" style="display:none">
+            <label class="form-label">Until (optional)</label>
+            <input type="date" class="form-input" id="evt-recur-end">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="evt-notes" rows="2" placeholder="Optional notes..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn" id="btn-delete-event" onclick="deleteEvent()" style="display:none">Delete</button>
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn--primary" onclick="saveEvent()">Save</button>
         </div>
       </div>
-      <div>
-        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">#1 Seeds in Final Four</label>
-        <select id="f-ones-ff" style="width:100%;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px">
-          <option value="">Any</option>
-          <option value="0">0 (chaos)</option>
-          <option value="1">Exactly 1</option>
-          <option value="2">Exactly 2</option>
-          <option value="3">Exactly 3</option>
-          <option value="4">All 4 (chalk)</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Cinderella Depth</label>
-        <div style="display:flex;gap:4px">
-          <select id="f-cind-seed" style="flex:1;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 4px">
-            <option value="">Off</option>
-            <option value="10">10+ seed</option>
-            <option value="11">11+ seed</option>
-            <option value="12" selected>12+ seed</option>
-            <option value="13">13+ seed</option>
-          </select>
-          <select id="f-cind-round" style="flex:1;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 4px">
-            <option value="s16" selected>in S16</option>
-            <option value="e8">in E8</option>
-            <option value="ff">in FF</option>
-          </select>
-        </div>
-      </div>
-      <div>
-        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Conference Depth</label>
-        <div style="display:flex;gap:4px">
-          <select id="f-conf-name" style="flex:2;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 4px">
-            <option value="">Off</option>
-          </select>
-          <select id="f-conf-min" style="flex:1;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 4px">
-            <option value="2">2+</option>
-            <option value="3" selected>3+</option>
-            <option value="4">4+</option>
-            <option value="5">5+</option>
-          </select>
-          <select id="f-conf-round" style="flex:1;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 4px">
-            <option value="s16" selected>S16</option>
-            <option value="e8">E8</option>
-            <option value="ff">FF</option>
-          </select>
-        </div>
-      </div>
-      <div>
-        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Lowest Seed in Final Four</label>
-        <select id="f-low-ff" style="width:100%;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px">
-          <option value="">Any</option>
-          <option value="5">At least one 5+ seed</option>
-          <option value="7">At least one 7+ seed</option>
-          <option value="9">At least one 9+ seed</option>
-          <option value="11">At least one 11+ seed</option>
-        </select>
-      </div>
-    </div>
-    <div style="margin-top:8px;font-size:10px;color:var(--text2)">Tighter filters may require more attempts to find a matching bracket. If no match is found in 10,000 tries, the best partial match is returned.</div>
-  </div>
-  <div id="diag" class="diag" style="display:none"></div>
-  <div id="single-bracket" style="display:none"></div>
-  <div id="upset-summary"></div>
-  <div class="results-grid" id="results-grid"></div>
-  <div id="bracket-display"></div>
-</div>
-
-<div id="matchup-panel" class="panel">
-  <div class="note-box">Pick any two teams for a head-to-head simulation using your current weights.</div>
-  <div class="matchup-container">
-    <div class="matchup-picker"><label>Team A</label><select id="team-a"></select></div>
-    <div class="matchup-picker"><label>Team B</label><select id="team-b"></select></div>
-  </div>
-  <div style="margin-top:12px"><button class="btn btn-primary" onclick="runMatchup()">Simulate Matchup</button></div>
-  <div id="matchup-result"></div>
-</div>
-
-<div id="weights-panel" class="panel">
-  <div class="note-box"><strong>How weights work:</strong> The base prediction uses adjusted efficiency. Context weights add/subtract points to the expected margin. <strong>Game Variance</strong> is the most important lever — it controls how much randomness each game has. At 1.0, it matches real college basketball. Crank it up for more upsets.</div>
-  <div class="weights-grid" id="weights-grid"></div>
-  <div id="weight-readout" class="diag" style="margin-top:20px"></div>
-</div>
-
-<div id="data-panel" class="panel">
-  <div class="note-box">
-    <strong>Import from Barttorvik:</strong> Go to <strong>barttorvik.com/trank.php</strong>, select the table (Ctrl+A on the table area), copy (Ctrl+C), and paste below.
-    Or download <strong>barttorvik.com/2026_team_results.csv</strong> and paste its contents. The importer will auto-detect columns and fuzzy-match team names.
-    Only the 68 tournament teams will be updated — everything else is ignored.
-  </div>
-  <div style="margin-bottom:16px">
-    <textarea id="import-area" placeholder="Paste Barttorvik data here (tab-separated from the site, or CSV)..." style="width:100%;height:120px;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:12px;resize:vertical"></textarea>
-    <div style="display:flex;gap:12px;margin-top:8px">
-      <button class="btn btn-primary" onclick="parseImport()">Parse &amp; Map Columns</button>
-      <span id="import-status" class="mono" style="font-size:12px;color:var(--text2);align-self:center"></span>
     </div>
   </div>
-  <div id="import-preview" style="display:none;margin-bottom:20px"></div>
-  <div class="data-table-wrap">
-    <table class="data-table"><thead><tr>
-      <th>#</th><th>Team</th><th>Rgn</th><th>Rec</th><th>AdjOE</th><th>AdjDE</th><th>Tempo</th><th>SOS</th><th>Mom</th><th>Exp</th>
-    </tr></thead><tbody id="data-tbody"></tbody></table>
-  </div>
-</div>
 
-<div id="method-panel" class="panel">
-  <div style="max-width:800px">
-    <h2 style="font-size:20px;font-weight:800;margin-bottom:20px;color:var(--accent)">Methodology</h2>
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    let currentYear, currentMonth;
+    let editingEventId = null;
+    let dragStart = null;
+    let dragEnd = null;
+    let isDragging = false;
+    let overlayEvents = []; // Multi-day event data for post-render overlay positioning
+    let calMeals = {}; // dateStr → { title } lookup for meal indicators
 
-    <div class="note-box" style="border-left-color:var(--gold)"><strong>Overview:</strong> This engine uses a Monte Carlo simulation approach to model the 2026 NCAA Tournament. Each game is simulated by calculating an expected point margin between two teams, then adding gaussian random noise to represent real game-to-game variance. The bracket is simulated thousands of times to produce probability distributions for each team's advancement.</div>
+    // ---- MEAL DATA FOR CALENDAR ----
+    async function loadMealsForMonth(year, month) {
+      calMeals = {};
+      try {
+        const res = await fetch('/api/meals/weeks');
+        const data = await res.json();
+        const weeks = data.weeks || [];
+        if (weeks.length === 0) return;
 
-    <h3 style="font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--text)">1. Core Efficiency Model</h3>
-    <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:16px">
-      The backbone of every prediction is <strong style="color:var(--text)">adjusted efficiency margin</strong>. For each matchup, we estimate points per possession for each team using the formula:<br><br>
-      <code style="background:var(--surface2);padding:4px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px">Team A PPP = (A's AdjOE × B's AdjDE) / National Avg Efficiency</code><br><br>
-      The expected margin is then <code style="background:var(--surface2);padding:4px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px">(A_PPP − B_PPP) × avg_possessions / 100</code>. This is the standard tempo-free approach used by KenPom, Barttorvik, and most serious college basketball models.
-    </p>
+        // Find weeks that overlap this month
+        const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
-    <h3 style="font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--text)">2. Data Sources</h3>
-    <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:8px">All team statistics are sourced from <strong style="color:var(--text)">Barttorvik (barttorvik.com)</strong>, a free and widely-respected college basketball analytics site.</p>
-    <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px">
-      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--text);font-weight:600">AdjOE, AdjDE, Tempo</td><td style="padding:8px;color:var(--text2)">Full-season adjusted efficiency ratings from <code style="font-family:'DM Mono',monospace">2026_team_results.csv</code> (T-Rank data)</td></tr>
-      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--text);font-weight:600">SOS</td><td style="padding:8px;color:var(--text2)">Strength of schedule from the same CSV (column 16), Barttorvik's composite schedule strength metric</td></tr>
-      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--text);font-weight:600">Momentum</td><td style="padding:8px;color:var(--text2)">Derived from Barttorvik's <strong style="color:var(--text)">H-Rank</strong> page (last 10 games adjusted efficiency). Calculated as the delta between last-10 efficiency margin and full-season efficiency margin, normalized to 0–1. Above 0.5 = peaking, below 0.5 = fading.</td></tr>
-      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--text);font-weight:600">Experience</td><td style="padding:8px;color:var(--text2)">Hand-estimated based on seed line as a proxy for program tournament pedigree. This is the least data-driven factor and is a candidate for future improvement.</td></tr>
-    </table>
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-    <h3 style="font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--text)">3. Game Simulation</h3>
-    <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:16px">
-      Each simulated game follows this process:<br><br>
-      <strong style="color:var(--text)">a)</strong> Calculate the <strong style="color:var(--text)">expected margin</strong> = (efficiency component × efficiency weight) + (SOS delta × SOS weight) + (momentum delta × momentum weight) + (experience delta × experience weight)<br><br>
-      <strong style="color:var(--text)">b)</strong> Generate a <strong style="color:var(--text)">random game outcome</strong> by adding gaussian noise: <code style="background:var(--surface2);padding:4px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px">actual_margin = expected_margin + N(0, σ)</code> where σ is controlled by the Game Variance slider. At variance=1.0, σ ≈ 11 points, matching real college basketball game-to-game standard deviation.<br><br>
-      <strong style="color:var(--text)">c)</strong> If the simulated margin is positive, Team A wins. If negative, Team B wins. This is how upsets naturally emerge — a team expected to win by 5 points has a meaningful chance of losing when the noise swings -8 or more.
-    </p>
+        for (const week of weeks) {
+          try {
+            const weekStart = week.startDate || week.id;
+            if (!weekStart || !/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) continue;
 
-    <h3 style="font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--text)">4. Monte Carlo Method</h3>
-    <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:16px">
-      The "Run Monte Carlo" button simulates the entire 67-game tournament thousands of times (configurable from 1K to 1M). Each simulation plays every game from the Round of 64 through the Championship. Results are aggregated to produce probability distributions — the percentage of simulations in which each team reaches each round.
-    </p>
+            // Week covers 7 days: weekStart through weekStart+6
+            const ws = new Date(weekStart + 'T12:00:00');
+            if (isNaN(ws.getTime())) continue;
 
-    <h3 style="font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--text)">5. Bracket Selection (Pick One Bracket)</h3>
-    <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:16px">
-      The "Pick One Bracket" feature uses <strong style="color:var(--text)">rejection sampling</strong> to find a historically reasonable bracket. It simulates brackets in a loop and counts first-round upsets (lower seed beats higher seed). Brackets are accepted only if they fall within historical norms: <strong style="color:var(--text)">4–10 first-round upsets</strong> (historical average ~6.2) and <strong style="color:var(--text)">6–16 total upsets</strong> (historical average ~12–13). This filters out unreasonably chalky or chaotic brackets without distorting the model's actual predictions. Approximately 90% of raw simulations pass this filter on the first attempt.
-    </p>
+            const weekEndDate = new Date(ws);
+            weekEndDate.setDate(ws.getDate() + 6);
+            const weekEnd = weekEndDate.toISOString().slice(0, 10);
 
-    <h3 style="font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--text)">6. Weight Descriptions</h3>
-    <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px">
-      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--accent);font-weight:600;width:140px">Efficiency (0–2)</td><td style="padding:8px;color:var(--text2)">Scales the raw efficiency margin. At 1.0, used as-is. At 0, efficiency is entirely ignored (all teams are equal before contextual factors). At 2.0, efficiency gaps are doubled.</td></tr>
-      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--accent);font-weight:600">SOS (0–5)</td><td style="padding:8px;color:var(--text2)">Points added/subtracted per unit of strength-of-schedule difference. Penalizes teams with weak schedules (mid-majors) and rewards battle-tested teams.</td></tr>
-      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--accent);font-weight:600">Momentum (0–5)</td><td style="padding:8px;color:var(--text2)">Points added/subtracted per unit of momentum difference. Data-driven from Barttorvik H-Rank (last 10 games efficiency vs season average). Captures teams peaking or fading entering the tournament.</td></tr>
-      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--accent);font-weight:600">Experience (0–5)</td><td style="padding:8px;color:var(--text2)">Points added/subtracted per unit of experience difference. Currently hand-estimated by seed tier. Intended to capture program pedigree and coaching tournament experience.</td></tr>
-      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--accent);font-weight:600">Variance (0–5)</td><td style="padding:8px;color:var(--text2)">Controls game-to-game randomness (σ). At 0: σ=4pts (nearly deterministic). At 1.0: σ=11pts (matches real basketball). At 2+: increased chaos. This is the primary lever for upset frequency.</td></tr>
-    </table>
+            // Skip weeks that don't overlap this month
+            if (weekEnd < monthStart || weekStart > monthEnd) continue;
 
-    <h3 style="font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--text)">7. Limitations & Future Work</h3>
-    <p style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:16px">
-      <strong style="color:var(--text)">Experience factor</strong> is the least rigorous input — it's hand-estimated by seed tier rather than derived from data. A better approach would incorporate program tournament frequency, coach postseason record, and roster minutes of March experience.<br><br>
-      <strong style="color:var(--text)">Injuries</strong> are not modeled. Gonzaga's Braden Huff injury, North Carolina losing Caleb Wilson, and Duke's Caleb Foster absence all materially affect outcomes but aren't reflected in the efficiency data unless they happened early enough to show up in the season averages.<br><br>
-      <strong style="color:var(--text)">Matchup-specific factors</strong> like style of play interactions (e.g., a slow-paced defensive team may neutralize a fast-paced offense more than the raw numbers suggest) are not captured.<br><br>
-      <strong style="color:var(--text)">Barttorvik data columns not yet incorporated:</strong> Qual O/Qual D (quality-game-only efficiency), Elite SOS, WAB (Wins Above Bubble), and conference-only efficiency are all available in the source data and could add additional predictive layers.
-    </p>
+            // Fetch this week's plan
+            const planRes = await fetch(`/api/meals/${week.id}`);
+            const planData = await planRes.json();
+            const plan = planData.plan;
+            if (!plan || !plan.meals) continue;
 
-    <div class="diag" style="margin-top:24px">
-      <strong>Built with:</strong> Vanilla JavaScript · Monte Carlo simulation · Box-Muller gaussian transform · Barttorvik T-Rank + H-Rank data<br>
-      <strong>Data as of:</strong> March 16, 2026 (Selection Sunday)
-    </div>
-  </div>
-</div>
+            // Map each day to its date string
+            for (let d = 0; d < 7; d++) {
+              const dayDate = new Date(ws);
+              dayDate.setDate(ws.getDate() + d);
+              const dateStr = dayDate.toISOString().slice(0, 10);
+              if (dateStr < monthStart || dateStr > monthEnd) continue;
 
-<script>
-// ========== TEAM DATA ==========
-const T=[
-{n:"Duke",s:1,r:"East",rec:"32-2",oe:128.2,de:90.8,tm:65.8,ss:0.741,mm:0.86,xp:.85},
-{n:"Siena",s:16,r:"East",rec:"23-11",oe:107.2,de:108.9,tm:64.6,ss:0.297,mm:0.52,xp:.30},
-{n:"Ohio State",s:8,r:"East",rec:"21-12",oe:125.2,de:101.6,tm:66.2,ss:0.727,mm:0.81,xp:.50},
-{n:"TCU",s:9,r:"East",rec:"22-11",oe:114.9,de:99.6,tm:67.6,ss:0.672,mm:0.76,xp:.50},
-{n:"St. John's",s:5,r:"East",rec:"28-6",oe:119.8,de:94.1,tm:69.6,ss:0.729,mm:0.62,xp:.65},
-{n:"Northern Iowa",s:12,r:"East",rec:"23-12",oe:109.7,de:98.6,tm:62.2,ss:0.508,mm:0.68,xp:.30},
-{n:"Kansas",s:4,r:"East",rec:"23-10",oe:117.8,de:94.4,tm:67.6,ss:0.787,mm:0.16,xp:.65},
-{n:"Cal Baptist",s:13,r:"East",rec:"25-8",oe:107.5,de:100.3,tm:65.9,ss:0.452,mm:0.65,xp:.30},
-{n:"Louisville",s:6,r:"East",rec:"23-10",oe:124.0,de:98.2,tm:69.7,ss:0.709,mm:0.49,xp:.50},
-{n:"South Florida",s:11,r:"East",rec:"25-8",oe:116.8,de:101.4,tm:71.4,ss:0.548,mm:0.76,xp:.30},
-{n:"Michigan State",s:3,r:"East",rec:"25-7",oe:122.9,de:96.2,tm:66.0,ss:0.747,mm:0.42,xp:.65},
-{n:"North Dakota State",s:14,r:"East",rec:"27-7",oe:111.4,de:106.0,tm:66.4,ss:0.341,mm:0.46,xp:.30},
-{n:"UCLA",s:7,r:"East",rec:"23-11",oe:124.5,de:101.8,tm:64.7,ss:0.713,mm:0.67,xp:.50},
-{n:"UCF",s:10,r:"East",rec:"21-11",oe:120.0,de:105.7,tm:69.1,ss:0.710,mm:0.40,xp:.50},
-{n:"UConn",s:2,r:"East",rec:"29-5",oe:123.1,de:95.0,tm:64.6,ss:0.714,mm:0.32,xp:.85},
-{n:"Furman",s:15,r:"East",rec:"22-12",oe:106.9,de:109.0,tm:65.8,ss:0.318,mm:0.44,xp:.30},
-{n:"Arizona",s:1,r:"West",rec:"32-2",oe:126.9,de:91.4,tm:70.0,ss:0.739,mm:0.58,xp:.85},
-{n:"LIU",s:16,r:"West",rec:"24-10",oe:103.6,de:109.8,tm:67.8,ss:0.303,mm:0.36,xp:.30},
-{n:"Villanova",s:8,r:"West",rec:"24-8",oe:119.6,de:100.5,tm:64.9,ss:0.707,mm:0.27,xp:.50},
-{n:"Utah State",s:9,r:"West",rec:"28-6",oe:123.0,de:102.1,tm:67.6,ss:0.640,mm:0.43,xp:.50},
-{n:"Wisconsin",s:5,r:"West",rec:"24-10",oe:127.2,de:101.6,tm:68.7,ss:0.734,mm:0.83,xp:.65},
-{n:"High Point",s:12,r:"West",rec:"30-4",oe:115.7,de:107.5,tm:69.9,ss:0.279,mm:0.59,xp:.30},
-{n:"Arkansas",s:4,r:"West",rec:"26-8",oe:127.9,de:101.7,tm:71.0,ss:0.746,mm:0.57,xp:.65},
-{n:"Hawaii",s:13,r:"West",rec:"24-8",oe:106.9,de:101.8,tm:69.6,ss:0.402,mm:0.23,xp:.30},
-{n:"BYU",s:6,r:"West",rec:"23-11",oe:124.7,de:104.3,tm:69.8,ss:0.748,mm:0.34,xp:.50},
-{n:"Texas",s:11,r:"West",rec:"18-14",oe:124.0,de:106.4,tm:67.1,ss:0.671,mm:0.42,xp:.30},
-{n:"NC State",s:11,r:"West",rec:"20-13",oe:124.1,de:104.7,tm:69.1,ss:0.719,mm:0.25,xp:.30},
-{n:"Gonzaga",s:3,r:"West",rec:"30-3",oe:120.3,de:94.0,tm:68.9,ss:0.627,mm:0.34,xp:.65},
-{n:"Kennesaw State",s:14,r:"West",rec:"21-13",oe:110.8,de:109.5,tm:71.3,ss:0.422,mm:0.65,xp:.30},
-{n:"Miami FL",s:7,r:"West",rec:"25-8",oe:121.1,de:101.5,tm:67.9,ss:0.639,mm:0.69,xp:.50},
-{n:"Missouri",s:10,r:"West",rec:"20-12",oe:119.9,de:103.0,tm:66.4,ss:0.677,mm:0.74,xp:.50},
-{n:"Purdue",s:2,r:"West",rec:"27-8",oe:133.3,de:100.3,tm:64.4,ss:0.779,mm:0.58,xp:.85},
-{n:"Queens",s:15,r:"West",rec:"21-13",oe:114.7,de:117.1,tm:69.5,ss:0.383,mm:0.56,xp:.30},
-{n:"Michigan",s:1,r:"Midwest",rec:"31-3",oe:127.6,de:91.0,tm:71.2,ss:0.803,mm:0.46,xp:.85},
-{n:"UMBC",s:16,r:"Midwest",rec:"24-8",oe:107.6,de:109.2,tm:66.0,ss:0.223,mm:0.95,xp:.30},
-{n:"Howard",s:16,r:"Midwest",rec:"23-10",oe:103.5,de:106.2,tm:69.0,ss:0.218,mm:0.80,xp:.30},
-{n:"Georgia",s:8,r:"Midwest",rec:"22-10",oe:124.3,de:104.8,tm:72.0,ss:0.670,mm:0.56,xp:.50},
-{n:"Saint Louis",s:9,r:"Midwest",rec:"28-5",oe:119.5,de:102.2,tm:71.0,ss:0.516,mm:0.05,xp:.50},
-{n:"Texas Tech",s:5,r:"Midwest",rec:"22-10",oe:126.3,de:98.8,tm:66.4,ss:0.760,mm:0.65,xp:.65},
-{n:"Akron",s:12,r:"Midwest",rec:"29-5",oe:117.2,de:105.4,tm:70.3,ss:0.394,mm:0.51,xp:.30},
-{n:"Alabama",s:4,r:"Midwest",rec:"23-9",oe:129.5,de:102.8,tm:73.1,ss:0.789,mm:0.45,xp:.65},
-{n:"Hofstra",s:13,r:"Midwest",rec:"24-10",oe:113.2,de:104.9,tm:64.7,ss:0.430,mm:0.82,xp:.30},
-{n:"Tennessee",s:6,r:"Midwest",rec:"22-11",oe:121.5,de:95.5,tm:65.2,ss:0.732,mm:0.48,xp:.50},
-{n:"SMU",s:11,r:"Midwest",rec:"20-13",oe:123.0,de:105.0,tm:68.6,ss:0.713,mm:0.30,xp:.30},
-{n:"Miami OH",s:11,r:"Midwest",rec:"31-1",oe:116.7,de:107.6,tm:69.9,ss:0.345,mm:0.53,xp:.30},
-{n:"Virginia",s:3,r:"Midwest",rec:"29-5",oe:122.3,de:95.8,tm:65.6,ss:0.676,mm:0.63,xp:.65},
-{n:"Wright State",s:14,r:"Midwest",rec:"23-11",oe:112.4,de:109.0,tm:67.0,ss:0.396,mm:0.33,xp:.30},
-{n:"Kentucky",s:7,r:"Midwest",rec:"21-13",oe:119.9,de:100.0,tm:68.3,ss:0.736,mm:0.52,xp:.50},
-{n:"Santa Clara",s:10,r:"Midwest",rec:"26-8",oe:125.0,de:103.7,tm:69.3,ss:0.612,mm:0.52,xp:.50},
-{n:"Iowa State",s:2,r:"Midwest",rec:"27-7",oe:123.8,de:92.6,tm:67.0,ss:0.697,mm:0.55,xp:.85},
-{n:"Tennessee State",s:15,r:"Midwest",rec:"23-9",oe:107.8,de:111.9,tm:70.1,ss:0.271,mm:0.95,xp:.30},
-{n:"Florida",s:1,r:"South",rec:"26-7",oe:126.1,de:92.3,tm:70.4,ss:0.758,mm:0.53,xp:.85},
-{n:"Prairie View A&M",s:16,r:"South",rec:"18-17",oe:101.4,de:111.4,tm:70.9,ss:0.296,mm:0.95,xp:.30},
-{n:"Lehigh",s:16,r:"South",rec:"18-16",oe:102.6,de:112.8,tm:66.9,ss:0.309,mm:0.66,xp:.30},
-{n:"Clemson",s:8,r:"South",rec:"24-10",oe:116.6,de:97.0,tm:64.3,ss:0.682,mm:0.26,xp:.50},
-{n:"Iowa",s:9,r:"South",rec:"21-12",oe:122.1,de:100.2,tm:63.0,ss:0.692,mm:0.24,xp:.50},
-{n:"Vanderbilt",s:5,r:"South",rec:"26-8",oe:127.5,de:99.3,tm:69.0,ss:0.738,mm:0.65,xp:.65},
-{n:"McNeese",s:12,r:"South",rec:"28-5",oe:113.2,de:102.2,tm:66.1,ss:0.424,mm:0.67,xp:.30},
-{n:"Nebraska",s:4,r:"South",rec:"26-6",oe:117.2,de:93.5,tm:66.8,ss:0.695,mm:0.20,xp:.65},
-{n:"Troy",s:13,r:"South",rec:"22-11",oe:110.7,de:109.0,tm:65.1,ss:0.403,mm:0.41,xp:.30},
-{n:"North Carolina",s:6,r:"South",rec:"24-8",oe:121.4,de:100.0,tm:68.0,ss:0.703,mm:0.38,xp:.50},
-{n:"VCU",s:11,r:"South",rec:"27-7",oe:119.3,de:103.1,tm:68.7,ss:0.565,mm:0.68,xp:.30},
-{n:"Illinois",s:3,r:"South",rec:"24-8",oe:131.9,de:98.2,tm:65.7,ss:0.738,mm:0.60,xp:.65},
-{n:"Penn",s:14,r:"South",rec:"18-11",oe:106.6,de:105.4,tm:69.0,ss:0.464,mm:0.73,xp:.30},
-{n:"Saint Mary's",s:7,r:"South",rec:"27-5",oe:119.4,de:97.6,tm:65.3,ss:0.600,mm:0.67,xp:.50},
-{n:"Texas A&M",s:10,r:"South",rec:"21-11",oe:119.9,de:101.4,tm:71.0,ss:0.673,mm:0.18,xp:.50},
-{n:"Houston",s:2,r:"South",rec:"28-6",oe:125.4,de:92.4,tm:63.3,ss:0.731,mm:0.28,xp:.85},
-{n:"Idaho",s:15,r:"South",rec:"21-14",oe:108.8,de:106.2,tm:67.4,ss:0.425,mm:0.85,xp:.30},
-];
-
-// Expand to full team objects
-const TEAMS = T.map(t => ({name:t.n,seed:t.s,region:t.r,record:t.rec,adjOE:t.oe,adjDE:t.de,tempo:t.tm,sos:t.ss,momentum:t.mm,experience:t.xp}));
-const TM = {}; // team map
-TEAMS.forEach(t => TM[t.name] = t);
-
-const BK = {
-  East:[["Duke","Siena"],["Ohio State","TCU"],["St. John's","Northern Iowa"],["Kansas","Cal Baptist"],["Louisville","South Florida"],["Michigan State","North Dakota State"],["UCLA","UCF"],["UConn","Furman"]],
-  West:[["Arizona","LIU"],["Villanova","Utah State"],["Wisconsin","High Point"],["Arkansas","Hawaii"],["BYU","Texas"],["Gonzaga","Kennesaw State"],["Miami FL","Missouri"],["Purdue","Queens"]],
-  Midwest:[["Michigan","UMBC"],["Georgia","Saint Louis"],["Texas Tech","Akron"],["Alabama","Hofstra"],["Tennessee","Miami OH"],["Virginia","Wright State"],["Kentucky","Santa Clara"],["Iowa State","Tennessee State"]],
-  South:[["Florida","Lehigh"],["Clemson","Iowa"],["Vanderbilt","McNeese"],["Nebraska","Troy"],["North Carolina","VCU"],["Illinois","Penn"],["Saint Mary's","Texas A&M"],["Houston","Idaho"]]
-};
-
-// ========== WEIGHTS ==========
-const WD = [
-  {id:"eff",label:"Efficiency Rating",desc:"Scales the raw efficiency margin. 0 = ignored, 1 = as-is, 2 = doubled.",min:0,max:2,step:0.1,v:1.0},
-  {id:"sos",label:"Strength of Schedule",desc:"Points per unit SOS gap. Higher = harder on mid-majors.",min:0,max:5,step:0.25,v:3.0},
-  {id:"mom",label:"Momentum (Last 10 Games)",desc:"Data-driven: compares each team's last-10-game efficiency margin to their season average (from Barttorvik H-Rank). Duke +7.3, Wisconsin +6.7 = peaking. Kansas -6.8, Houston -4.4 = fading. Higher weight amplifies these trends.",min:0,max:5,step:0.25,v:2.0},
-  {id:"exp",label:"Experience",desc:"Points per unit experience gap. Blue blood bonus.",min:0,max:5,step:0.25,v:2.0},
-  {id:"var",label:"Game Variance (σ)",desc:"Game-to-game randomness. 0=deterministic, 1=real basketball (~11pt σ), 2+=Cinderella mode. THIS IS THE UPSET LEVER.",min:0,max:5,step:0.25,v:1.0},
-];
-const W = {};
-WD.forEach(d => W[d.id] = d.v);
-
-// ========== ENGINE ==========
-const AVG = 106.0;
-
-function randn() {
-  let u=0,v=0;
-  while(!u) u=Math.random();
-  while(!v) v=Math.random();
-  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
-}
-
-function sigma() { return 4 + W['var'] * 7; }
-
-function margin(a,b) {
-  const ap = a.adjOE * b.adjDE / AVG;
-  const bp = b.adjOE * a.adjDE / AVG;
-  const pos = (a.tempo + b.tempo) / 2;
-  const raw = (ap - bp) * pos / 100;
-  return raw * W.eff + (a.sos-b.sos)*W.sos + (a.momentum-b.momentum)*W.mom + (a.experience-b.experience)*W.exp;
-}
-
-function ncdf(z) {
-  if(z<-8)return 0; if(z>8)return 1;
-  const a=Math.abs(z), t=1/(1+.2316419*a), d=.3989422802*Math.exp(-z*z/2);
-  const p=d*t*(.3193815+t*(-.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));
-  return z>0?1-p:p;
-}
-
-function wp(a,b) { return ncdf(margin(a,b)/sigma()); }
-
-function sim(na,nb) {
-  const a=TM[na], b=TM[nb];
-  if(!a||!b) return na;
-  return (margin(a,b) + randn()*sigma()) > 0 ? na : nb;
-}
-
-function simRegion(m) {
-  const r1=m.map(([a,b])=>sim(a,b));
-  const r2=[]; for(let i=0;i<r1.length;i+=2) r2.push(sim(r1[i],r1[i+1]));
-  const r3=[]; for(let i=0;i<r2.length;i+=2) r3.push(sim(r2[i],r2[i+1]));
-  return {r1,r2,r3,winner:sim(r3[0],r3[1])};
-}
-
-function simAll() {
-  const R={};
-  for(const [k,m] of Object.entries(BK)) R[k]=simRegion(m);
-  const f1=sim(R.East.winner,R.South.winner);
-  const f2=sim(R.West.winner,R.Midwest.winner);
-  return {R,ff:[f1,f2],champ:sim(f1,f2)};
-}
-
-// ========== UI ==========
-let SR=null;
-
-function runFullSim() {
-  const n=+document.getElementById('sim-count').value;
-  document.getElementById('sim-status').textContent='Running...';
-  document.getElementById('single-bracket').style.display='none';
-  document.getElementById('single-bracket').innerHTML='';
-  setTimeout(()=>{
-    const t0 = performance.now();
-    const C={ch:{},ff:{},e8:{},s16:{},r32:{},r64:{}};
-    TEAMS.forEach(t=>{C.ch[t.name]=0;C.ff[t.name]=0;C.e8[t.name]=0;C.s16[t.name]=0;C.r32[t.name]=0;C.r64[t.name]=0;});
-    for(let i=0;i<n;i++){
-      const s=simAll();
-      C.ch[s.champ]++;
-      s.ff.forEach(t=>C.ff[t]++);
-      for(const r of Object.values(s.R)){
-        C.e8[r.winner]++;         // E8 winner = FF qualifier
-        r.r3.forEach(t=>C.s16[t]++);  // S16 winners = E8 qualifiers
-        r.r2.forEach(t=>C.r32[t]++);  // R32 winners = S16 qualifiers
-        r.r1.forEach(t=>C.r64[t]++);  // R64 winners = R32 qualifiers (FIRST ROUND WINS)
+              const dayKey = dayNames[dayDate.getDay()];
+              const meal = plan.meals[dayKey];
+              if (meal && meal.title) {
+                calMeals[dateStr] = { title: meal.title };
+              }
+            }
+          } catch (weekErr) {
+            console.warn('Skipping week:', week.id, weekErr.message);
+          }
+        }
+      } catch (err) {
+        console.warn('Calendar meal load skipped:', err.message);
       }
     }
-    SR={n,C};
-    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-    document.getElementById('sim-status').textContent=n.toLocaleString()+' sims · '+elapsed+'s';
 
-    // Diagnostic
-    const sd=sigma();
-    const dm=margin(TM.Duke,TM.Siena);
-    const dp=ncdf(dm/sd)*100;
-    const sjm=margin(TM["St. John's"],TM["Northern Iowa"]);
-    const sjp=ncdf(sjm/sd)*100;
-    const d=document.getElementById('diag');
-    d.style.display='block';
-    d.innerHTML=`<b>Weights:</b> eff=${W.eff} sos=${W.sos} mom=${W.mom} exp=${W.exp} var=${W['var']}<br>`+
-      `<b>σ=${sd.toFixed(1)}pts</b> | Duke-Siena: margin=${dm.toFixed(1)}, P=${dp.toFixed(1)}% | StJ-NIowa: margin=${sjm.toFixed(1)}, P=${sjp.toFixed(1)}%<br>`+
-      `<b>First-round upsets:</b> Siena R64 ${C.r64.Siena}x (${(C.r64.Siena/n*100).toFixed(1)}%) · NIowa R64 ${C.r64["Northern Iowa"]}x (${(C.r64["Northern Iowa"]/n*100).toFixed(1)}%) · UMBC R64 ${C.r64.UMBC}x (${(C.r64.UMBC/n*100).toFixed(1)}%) · McNeese R64 ${C.r64.McNeese}x (${(C.r64.McNeese/n*100).toFixed(1)}%)`;
+    function initTheme() {
+      if (localStorage.getItem('almanac-theme') === 'light') document.body.classList.add('light');
+    }
+    function toggleTheme() {
+      document.body.classList.toggle('light');
+      localStorage.setItem('almanac-theme', document.body.classList.contains('light') ? 'light' : 'dark');
+    }
+    initTheme();
 
-    renderResults();
-  },30);
-}
+    function initMonth() {
+      const now = new Date();
+      currentYear = now.getFullYear();
+      currentMonth = now.getMonth() + 1;
+    }
 
-function renderResults() {
-  if(!SR) return;
-  const{n,C}=SR;
-  const g=document.getElementById('results-grid');
-  g.innerHTML=[{t:"Champion",d:C.ch,c:"var(--gold)"},{t:"Final Four",d:C.e8,c:"var(--accent)"},{t:"Elite Eight",d:C.s16,c:"var(--blue)"},{t:"Sweet Sixteen",d:C.r32,c:"var(--purple)"},{t:"Win First Round",d:C.r64,c:"var(--green)"}].map(sec=>{
-    const rows=Object.entries(sec.d).map(([nm,ct])=>({nm,p:ct/n*100,sd:TM[nm]?.seed})).filter(x=>x.p>.05).sort((a,b)=>b.p-a.p).slice(0,16);
-    return `<div class="result-card"><h3>${sec.t}</h3>${rows.map(r=>`<div class="team-result"><div><span class="seed-badge">${r.sd}</span><span class="name">${r.nm}</span></div><span class="pct" style="color:${sec.c}">${r.p.toFixed(1)}%</span></div><div class="prob-bar"><div class="prob-bar-fill" style="width:${Math.min(100,r.p*(sec.t==='Champion'?4:2))}%;background:${sec.c}"></div></div>`).join('')}</div>`;
-  }).join('');
+    function shiftMonth(offset) {
+      currentMonth += offset;
+      if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+      if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+      renderPage();
+      loadMealsForMonth(currentYear, currentMonth).then(() => renderPage());
+    }
 
-  // Bracket display
-  const bd=document.getElementById('bracket-display');
-  const rc={East:"var(--blue)",West:"var(--green)",Midwest:"var(--gold)",South:"var(--red)"};
-  bd.innerHTML=Object.entries(BK).map(([rn,ms])=>`<div class="bracket-region"><h2><span class="dot" style="background:${rc[rn]}"></span>${rn} — First Round</h2>${ms.map(([a,b])=>{
-    const at=TM[a],bt=TM[b],ar=C.r64[a]||0,br=C.r64[b]||0;
-    return `<div class="bracket-matchup"><span class="seed">${at?.seed}</span><span class="tname">${a}</span><span class="wpct" style="color:${ar>=br?'var(--green)':'var(--text2)'}">${(ar/n*100).toFixed(1)}%</span><span style="color:var(--text2);font-size:11px">vs</span><span class="seed">${bt?.seed}</span><span class="tname">${b}</span><span class="wpct" style="color:${br>ar?'var(--green)':'var(--text2)'}">${(br/n*100).toFixed(1)}%</span></div>`;
-  }).join('')}</div>`).join('');
+    function goThisMonth() {
+      initMonth();
+      renderPage();
+      loadMealsForMonth(currentYear, currentMonth).then(() => renderPage());
+    }
 
-  // Upset summary
-  let upsetCount = 0;
-  let upsetList = [];
-  for (const [rn, ms] of Object.entries(BK)) {
-    ms.forEach(([a,b]) => {
-      const at=TM[a], bt=TM[b];
-      if (!at || !bt) return;
-      // lower seed number = higher seed (better team). If 12-seed beats 5-seed, that's upset
-      const hiSeed = at.seed < bt.seed ? a : b;
-      const loSeed = at.seed < bt.seed ? b : a;
-      const loSeedObj = TM[loSeed];
-      const loWins = C.r64[loSeed] || 0;
-      const pct = loWins/n*100;
-      if (pct > 0.5) { // only show if meaningful
-        upsetCount += pct/100; // expected upsets
-        if (pct > 5) upsetList.push({loSeed, seed:loSeedObj.seed, pct, vs:hiSeed, hiSeed:TM[hiSeed].seed});
+    // ---- MODAL (same as dashboard) ----
+    function openModal(event, defaultDate, defaultEndDate) {
+      editingEventId = event ? event.id : null;
+      document.getElementById('modal-title-text').textContent = event ? 'Edit Event' : 'New Event';
+      document.getElementById('btn-delete-event').style.display = event ? '' : 'none';
+
+      const catSelect = document.getElementById('evt-category');
+      catSelect.innerHTML = '';
+      for (const key of Object.keys(Store.data.categories)) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = Store.data.categories[key].label;
+        catSelect.appendChild(opt);
+      }
+
+      if (event) {
+        document.getElementById('evt-title').value = event.title;
+        document.getElementById('evt-date').value = event.date;
+        document.getElementById('evt-end-date').value = event.endDate || '';
+        document.getElementById('evt-category').value = event.category;
+        document.getElementById('evt-time').value = event.time || '';
+        document.getElementById('evt-priority').value = event.priority || 'normal';
+        document.getElementById('evt-recurs').value = event.recurs || '';
+        document.getElementById('evt-recur-end').value = event.recurEnd || '';
+        document.getElementById('evt-notes').value = event.notes || '';
+      } else {
+        document.getElementById('evt-title').value = '';
+        document.getElementById('evt-date').value = defaultDate || Utils.getTodayISO();
+        document.getElementById('evt-end-date').value = defaultEndDate || '';
+        document.getElementById('evt-category').value = 'family';
+        document.getElementById('evt-time').value = '';
+        document.getElementById('evt-priority').value = 'normal';
+        document.getElementById('evt-recurs').value = '';
+        document.getElementById('evt-recur-end').value = '';
+        document.getElementById('evt-notes').value = '';
+      }
+      toggleRecurEnd();
+
+      document.getElementById('event-modal').classList.add('visible');
+      document.getElementById('evt-title').focus();
+    }
+
+    function closeModal() {
+      document.getElementById('event-modal').classList.remove('visible');
+      editingEventId = null;
+    }
+
+    function toggleRecurEnd() {
+      const val = document.getElementById('evt-recurs').value;
+      document.getElementById('recur-end-group').style.display = val ? '' : 'none';
+    }
+
+    function saveEvent() {
+      const title = document.getElementById('evt-title').value.trim();
+      const date = document.getElementById('evt-date').value;
+      if (!title || !date) return;
+
+      const recurs = document.getElementById('evt-recurs').value || null;
+      const recurEnd = document.getElementById('evt-recur-end').value || null;
+      const endDateVal = document.getElementById('evt-end-date').value || null;
+      // Only set endDate if it's different from start date
+      const endDate = (endDateVal && endDateVal !== date) ? endDateVal : null;
+
+      const eventData = {
+        id: editingEventId || Utils.makeId(title),
+        title, date,
+        endDate,
+        category: document.getElementById('evt-category').value,
+        priority: document.getElementById('evt-priority').value,
+        time: document.getElementById('evt-time').value || null,
+        recurs,
+        recurEnd,
+        leadWeeks: 2,
+        notes: document.getElementById('evt-notes').value.trim(),
+        tasks: []
+      };
+
+      if (editingEventId) {
+        const existing = Store.data.events.find(e => e.id === editingEventId);
+        if (existing) eventData.tasks = existing.tasks || [];
+        Store.removeEvent(editingEventId);
+      }
+      Store.addEvent(eventData);
+      closeModal();
+      renderPage();
+    }
+
+    function deleteEvent() {
+      if (editingEventId && confirm('Delete this event?')) {
+        Store.removeEvent(editingEventId);
+        closeModal();
+        renderPage();
+      }
+    }
+
+    function handleEventClick(eventId) {
+      const event = Store.data.events.find(e => e.id === eventId);
+      if (event) openModal(event);
+    }
+
+    function handleCellClick(dateStr) {
+      // Only used as fallback for single clicks without drag
+      openModal(null, dateStr);
+    }
+
+    // ---- DRAG-TO-SELECT ----
+
+    function handleDragStart(dateStr, e) {
+      if (e.button !== undefined && e.button !== 0) return; // left click only
+      // Don't start drag on interactive child elements
+      const target = e.target || e.srcElement;
+      if (target.closest('.cal-more-link') || target.closest('.cal-event-label') || target.closest('.cal-span-overlay') || target.closest('.cal-meal-label')) return;
+      e.preventDefault();
+      isDragging = true;
+      dragStart = dateStr;
+      dragEnd = dateStr;
+      updateDragSelection();
+      const grid = document.querySelector('.cal-grid');
+      if (grid) grid.classList.add('dragging');
+    }
+
+    function handleDragOver(dateStr) {
+      if (!isDragging) return;
+      dragEnd = dateStr;
+      updateDragSelection();
+    }
+
+    function handleDragEnd() {
+      if (!isDragging) return;
+      isDragging = false;
+      const grid = document.querySelector('.cal-grid');
+      if (grid) grid.classList.remove('dragging');
+      clearDragSelection();
+
+      if (!dragStart) return;
+      // Ensure start <= end
+      let start = dragStart;
+      let end = dragEnd || dragStart;
+      if (start > end) { const tmp = start; start = end; end = tmp; }
+
+      if (start === end) {
+        openModal(null, start);
+      } else {
+        openModal(null, start, end);
+      }
+      dragStart = null;
+      dragEnd = null;
+    }
+
+    function updateDragSelection() {
+      // Clear previous selection
+      document.querySelectorAll('.cal-cell.drag-selected').forEach(el => el.classList.remove('drag-selected'));
+      if (!dragStart || !dragEnd) return;
+
+      let start = dragStart;
+      let end = dragEnd;
+      if (start > end) { const tmp = start; start = end; end = tmp; }
+
+      document.querySelectorAll('.cal-cell[data-date]').forEach(cell => {
+        const d = cell.getAttribute('data-date');
+        if (d >= start && d <= end) {
+          cell.classList.add('drag-selected');
+        }
+      });
+    }
+
+    function clearDragSelection() {
+      document.querySelectorAll('.cal-cell.drag-selected').forEach(el => el.classList.remove('drag-selected'));
+    }
+
+    // Global mouseup to catch drag-end even outside the grid
+    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener('touchend', handleDragEnd);
+
+    // ---- DAY POPOVER (for "+N more") ----
+
+    function closeDayPopover() {
+      const existing = document.querySelector('.day-popover');
+      if (existing) existing.remove();
+    }
+
+    function showDayPopover(dateStr, clickEvent) {
+      closeDayPopover();
+
+      const allEvents = Store.getEventsForDate(dateStr);
+      if (allEvents.length === 0) return;
+
+      const popover = document.createElement('div');
+      popover.className = 'day-popover';
+
+      const dayLabel = Utils.formatDateFull(dateStr);
+      let inner = `<div class="day-popover-header"><span>${dayLabel}</span><button class="day-popover-close" onclick="closeDayPopover()">✕</button></div>`;
+
+      for (const evt of allEvents) {
+        const style = Store.getCategoryStyle(evt.category);
+        const evtId = evt._templateId || evt.id;
+        inner += `<div class="day-popover-item" style="background:${style.bg};color:${style.color}" onclick="closeDayPopover();handleEventClick('${evtId}')">${evt.title}</div>`;
+      }
+
+      popover.innerHTML = inner;
+
+      // Position near the clicked element
+      const cell = clickEvent.target.closest('.cal-cell');
+      const grid = document.querySelector('.cal-grid');
+      if (cell && grid) {
+        grid.style.position = 'relative';
+        const cellRect = cell.getBoundingClientRect();
+        const gridRect = grid.getBoundingClientRect();
+        let left = cellRect.left - gridRect.left;
+        let top = cellRect.bottom - gridRect.top + 4;
+
+        // Keep popover within grid bounds
+        grid.appendChild(popover);
+        const popRect = popover.getBoundingClientRect();
+        if (popRect.right > gridRect.right) {
+          left = Math.max(0, left - (popRect.right - gridRect.right) - 8);
+        }
+        if (popRect.bottom > window.innerHeight) {
+          top = cellRect.top - gridRect.top - popRect.height - 4;
+        }
+        popover.style.left = left + 'px';
+        popover.style.top = top + 'px';
+      } else {
+        document.body.appendChild(popover);
+      }
+    }
+
+    // Dismiss popover on click outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.day-popover') && !e.target.closest('.cal-more-link')) {
+        closeDayPopover();
       }
     });
-  }
-  upsetList.sort((a,b) => b.pct - a.pct);
-  
-  const upsetHtml = `<div class="diag" style="margin-bottom:16px">
-    <b>Expected first-round upsets per tournament: ${upsetCount.toFixed(1)}</b> (historical avg: ~8-9)<br>
-    <b>Likeliest upsets:</b> ${upsetList.slice(0,10).map(u => 
-      `<span style="color:var(--green)">(${u.seed})${u.loSeed}</span> over (${u.hiSeed})${u.vs} ${u.pct.toFixed(1)}%`
-    ).join(' · ')}
-  </div>`;
-  document.getElementById('upset-summary').innerHTML = upsetHtml;
-}
 
-// ========== SINGLE BRACKET MODE ==========
-// Count upsets in a sim result (fast, no rendering)
-function countUpsets(s) {
-  let r64 = 0, total = 0;
-  for (const [rn, matchups] of Object.entries(BK)) {
-    const reg = s.R[rn];
-    // R64: compare each game winner's seed to loser's seed
-    matchups.forEach(([a,b], i) => {
-      const winner = reg.r1[i], loser = winner === a ? b : a;
-      if (TM[winner].seed > TM[loser].seed) { r64++; total++; }
-    });
-    // R32
-    for (let i = 0; i < reg.r2.length; i++) {
-      const w = reg.r2[i], l = w === reg.r1[i*2] ? reg.r1[i*2+1] : reg.r1[i*2];
-      if (TM[w].seed > TM[l].seed) total++;
-    }
-    // S16
-    for (let i = 0; i < reg.r3.length; i++) {
-      const w = reg.r3[i], l = w === reg.r2[i*2] ? reg.r2[i*2+1] : reg.r2[i*2];
-      if (TM[w].seed > TM[l].seed) total++;
-    }
-    // E8 (winner vs the S16 loser — compare the two S16 winners)
-    const e8loser = reg.winner === reg.r3[0] ? reg.r3[1] : reg.r3[0];
-    if (TM[reg.winner].seed > TM[e8loser].seed) total++;
-  }
-  // Final Four
-  const ff1loser = s.ff[0] === s.R.East.winner ? s.R.South.winner : s.R.East.winner;
-  const ff2loser = s.ff[1] === s.R.West.winner ? s.R.Midwest.winner : s.R.West.winner;
-  if (TM[s.ff[0]].seed > TM[ff1loser].seed) total++;
-  if (TM[s.ff[1]].seed > TM[ff2loser].seed) total++;
-  // Championship
-  const champLoser = s.champ === s.ff[0] ? s.ff[1] : s.ff[0];
-  if (TM[s.champ].seed > TM[champLoser].seed) total++;
-  return { r64, total };
-}
+    // ---- RENDER ----
+    function renderPage() {
+      const monthName = Utils.getMonthName(currentYear, currentMonth);
+      const events = Store.getEventsForMonth(currentYear, currentMonth);
+      const todayISO = Utils.getTodayISO();
+      const now = new Date();
+      const isThisMonth = currentYear === now.getFullYear() && currentMonth === now.getMonth() + 1;
 
-function runOneBracket() {
-  document.getElementById('results-grid').innerHTML = '';
-  document.getElementById('bracket-display').innerHTML = '';
-  document.getElementById('upset-summary').innerHTML = '';
-  document.getElementById('diag').style.display = 'none';
+      const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Rejection sampling: find a bracket matching user filters + historical reasonableness
-  const R64_MIN = 4, R64_MAX = 10;
-  const TOT_MIN = 6, TOT_MAX = 16;
-  const MAX_ATTEMPTS = 10000;
+      let html = '';
 
-  let s = null;
-  let upsetInfo = null;
-  let attempts = 0;
-  let bestCandidate = null;
-  let bestScore = -1;
-
-  // Check if any user filters are active
-  const hasUserFilters = document.getElementById('f-champ').value || 
-    document.getElementById('f-team-reach').value ||
-    document.getElementById('f-ones-ff').value ||
-    document.getElementById('f-cind-seed').value ||
-    document.getElementById('f-conf-name').value ||
-    document.getElementById('f-low-ff').value;
-
-  document.getElementById('sim-status').textContent = hasUserFilters ? 'Searching with filters...' : 'Simulating...';
-
-  for (let i = 0; i < MAX_ATTEMPTS; i++) {
-    attempts++;
-    const candidate = simAll();
-    const u = countUpsets(candidate);
-    const upsetOk = u.r64 >= R64_MIN && u.r64 <= R64_MAX && u.total >= TOT_MIN && u.total <= TOT_MAX;
-    const filterOk = checkFilters(candidate);
-    
-    if (upsetOk && filterOk) {
-      s = candidate;
-      upsetInfo = u;
-      break;
-    }
-    
-    // Track best partial match (passes user filters even if upsets are slightly off)
-    if (filterOk && !s) {
-      const score = (upsetOk ? 100 : 0) + Math.min(u.r64, 10) - Math.abs(u.r64 - 7);
-      if (score > bestScore) { bestScore = score; bestCandidate = candidate; }
-    }
-  }
-
-  // Fallback: use best partial match, or raw sim if nothing matched
-  if (!s) {
-    if (bestCandidate) {
-      s = bestCandidate;
-    } else {
-      s = simAll();
-    }
-    upsetInfo = countUpsets(s);
-  }
-
-  const el = document.getElementById('single-bracket');
-  el.style.display = 'block';
-  
-  const rc = {East:"#3b82f6", West:"#22c55e", Midwest:"#eab308", South:"#ef4444"};
-  let totalUpsets = 0;
-  let upsetGames = [];
-
-  // Track upsets across all games
-  function isUpset(w, l) {
-    return TM[w] && TM[l] && TM[w].seed > TM[l].seed;
-  }
-  function trackGame(w, l, round) {
-    if (isUpset(w, l)) {
-      upsetGames.push({winner:w, wSeed:TM[w].seed, loser:l, lSeed:TM[l].seed, round});
-      if (round === 'R64') totalUpsets++;
-    }
-  }
-
-  // Count all upsets first
-  for (const [rn, matchups] of Object.entries(BK)) {
-    const reg = s.R[rn];
-    matchups.forEach(([a,b], i) => { const w=reg.r1[i]; trackGame(w, w===a?b:a, 'R64'); });
-    for (let i=0; i<reg.r2.length; i++) { const w=reg.r2[i]; trackGame(w, w===reg.r1[i*2]?reg.r1[i*2+1]:reg.r1[i*2], 'R32'); }
-    for (let i=0; i<reg.r3.length; i++) { const w=reg.r3[i]; trackGame(w, w===reg.r2[i*2]?reg.r2[i*2+1]:reg.r2[i*2], 'S16'); }
-    trackGame(reg.winner, reg.winner===reg.r3[0]?reg.r3[1]:reg.r3[0], 'E8');
-  }
-  trackGame(s.ff[0], s.ff[0]===s.R.East.winner?s.R.South.winner:s.R.East.winner, 'FF');
-  trackGame(s.ff[1], s.ff[1]===s.R.West.winner?s.R.Midwest.winner:s.R.West.winner, 'FF');
-  trackGame(s.champ, s.champ===s.ff[0]?s.ff[1]:s.ff[0], 'NCG');
-
-  // Helper: render a team slot in the bracket
-  function slot(name, won, upsetWin) {
-    const t = TM[name];
-    const cls = won ? (upsetWin ? 'win upset' : 'win') : 'lose';
-    return `<div class="bkt-team ${cls}">${t?t.seed:''} ${name}</div>`;
-  }
-
-  // Build bracket for one region
-  function regionBracket(rn) {
-    const reg = s.R[rn];
-    const matchups = BK[rn];
-
-    // R64: 8 games, each with original matchup teams + winner
-    const r64games = matchups.map(([a,b], i) => {
-      const w = reg.r1[i], l = (w===a?b:a);
-      return { top:a, bot:b, winner:w, loser:l };
-    });
-
-    // R32: 4 games
-    const r32games = [];
-    for (let i=0; i<reg.r2.length; i++) {
-      const w = reg.r2[i];
-      const a = reg.r1[i*2], b = reg.r1[i*2+1];
-      r32games.push({ top:a, bot:b, winner:w, loser:w===a?b:a });
-    }
-
-    // S16: 2 games
-    const s16games = [];
-    for (let i=0; i<reg.r3.length; i++) {
-      const w = reg.r3[i];
-      const a = reg.r2[i*2], b = reg.r2[i*2+1];
-      s16games.push({ top:a, bot:b, winner:w, loser:w===a?b:a });
-    }
-
-    // E8: 1 game
-    const e8 = { top:reg.r3[0], bot:reg.r3[1], winner:reg.winner, loser:reg.winner===reg.r3[0]?reg.r3[1]:reg.r3[0] };
-
-    function renderRound(games) {
-      return games.map(g => {
-        const topWon = g.winner === g.top;
-        const botWon = g.winner === g.bot;
-        const topUpset = topWon && isUpset(g.top, g.bot);
-        const botUpset = botWon && isUpset(g.bot, g.top);
-        return `<div class="bkt-game">${slot(g.top, topWon, topUpset)}${slot(g.bot, botWon, botUpset)}</div>`;
-      }).join('');
-    }
-
-    return `<div class="bkt">
-      <div class="bkt-round">${renderRound(r64games)}</div>
-      <div class="bkt-round">${renderRound(r32games)}</div>
-      <div class="bkt-round">${renderRound(s16games)}</div>
-      <div class="bkt-round">${renderRound([e8])}</div>
-    </div>`;
-  }
-
-  // Champion + Final Four
-  const ff1w = s.ff[0], ff1l = s.ff[0]===s.R.East.winner ? s.R.South.winner : s.R.East.winner;
-  const ff2w = s.ff[1], ff2l = s.ff[1]===s.R.West.winner ? s.R.Midwest.winner : s.R.West.winner;
-  const champL = s.champ===s.ff[0] ? s.ff[1] : s.ff[0];
-
-  let html = '';
-
-  // Champion
-  html += `<div class="bkt-champ">
-    <div class="bkt-champ-label">National Champion</div>
-    <div class="bkt-champ-seed">(${TM[s.champ].seed})</div>
-    <div class="bkt-champ-name">${s.champ}</div>
-  </div>`;
-
-  // Final Four
-  html += `<div class="bkt-ff">
-    <div class="bkt-ff-game">
-      <div class="bkt-ff-label">Championship</div>
-      <div class="bkt-ff-team win">(${TM[s.champ].seed}) ${s.champ}</div>
-      <div class="bkt-ff-team lose">(${TM[champL].seed}) ${champL}</div>
-    </div>
-  </div>`;
-  html += `<div class="bkt-ff">
-    <div class="bkt-ff-game">
-      <div class="bkt-ff-label">Semifinal · East vs South</div>
-      <div class="bkt-ff-team ${ff1w===s.R.East.winner?'win':'lose'}">(${TM[s.R.East.winner].seed}) ${s.R.East.winner} <span style="font-size:10px;opacity:.5">East</span></div>
-      <div class="bkt-ff-team ${ff1w===s.R.South.winner?'win':'lose'}">(${TM[s.R.South.winner].seed}) ${s.R.South.winner} <span style="font-size:10px;opacity:.5">South</span></div>
-    </div>
-    <div class="bkt-ff-game">
-      <div class="bkt-ff-label">Semifinal · West vs Midwest</div>
-      <div class="bkt-ff-team ${ff2w===s.R.West.winner?'win':'lose'}">(${TM[s.R.West.winner].seed}) ${s.R.West.winner} <span style="font-size:10px;opacity:.5">West</span></div>
-      <div class="bkt-ff-team ${ff2w===s.R.Midwest.winner?'win':'lose'}">(${TM[s.R.Midwest.winner].seed}) ${s.R.Midwest.winner} <span style="font-size:10px;opacity:.5">Midwest</span></div>
-    </div>
-  </div>`;
-
-  // Upset summary
-  const activeFilters = [];
-  if (document.getElementById('f-champ').value) activeFilters.push('Champion: ' + document.getElementById('f-champ').value);
-  if (document.getElementById('f-team-reach').value) activeFilters.push(document.getElementById('f-team-reach').value + ' in ' + document.getElementById('f-team-round').value.toUpperCase());
-  if (document.getElementById('f-ones-ff').value) activeFilters.push(document.getElementById('f-ones-ff').value + ' #1 seeds in FF');
-  if (document.getElementById('f-cind-seed').value) activeFilters.push('Cinderella ' + document.getElementById('f-cind-seed').value + '+ in ' + document.getElementById('f-cind-round').value.toUpperCase());
-  if (document.getElementById('f-conf-name').value) activeFilters.push(document.getElementById('f-conf-name').value + ' ' + document.getElementById('f-conf-min').value + '+ in ' + document.getElementById('f-conf-round').value.toUpperCase());
-  if (document.getElementById('f-low-ff').value) activeFilters.push(document.getElementById('f-low-ff').value + '+ seed in FF');
-  
-  const filterNote = activeFilters.length > 0
-    ? `<br><span style="color:var(--accent)">Filters: ${activeFilters.join(' · ')}</span><br><span style="color:var(--text2)">Found in ${attempts.toLocaleString()} attempts</span>`
-    : (attempts > 1 ? `<br><span style="color:var(--text2)">Found in ${attempts} attempts</span>` : '');
-  
-  html += `<div class="diag"><b>First-round upsets: ${totalUpsets}</b> (avg ~6) · <b>${upsetGames.length} total</b> (avg ~12)${filterNote}`;
-  if (upsetGames.length > 0) {
-    html += `<br>` + upsetGames.map(u => `<span style="color:var(--red)">(${u.wSeed})${u.winner}</span> over (${u.lSeed})${u.loser} [${u.round}]`).join(' · ');
-  }
-  html += `</div>`;
-
-  // Regional brackets in 2x2 grid
-  html += `<div class="bkt-wrapper">`;
-  for (const [rn] of Object.entries(BK)) {
-    html += `<div>
-      <div class="bkt-region-title"><span class="dot" style="background:${rc[rn]}"></span>${rn} Region</div>
-      ${regionBracket(rn)}
-    </div>`;
-  }
-  html += `</div>`;
-
-  el.innerHTML = html;
-  document.getElementById('sim-status').textContent = attempts > 1 ? `Found in ${attempts.toLocaleString()} attempts` : '';
-}
-
-function initMatchup() {
-  const s=[...TEAMS].sort((a,b)=>a.seed-b.seed||a.name.localeCompare(b.name));
-  ['team-a','team-b'].forEach((id,i)=>{
-    document.getElementById(id).innerHTML=s.map(t=>`<option value="${t.name}" ${i===0&&t.name==='Duke'?'selected':''} ${i===1&&t.name==='Michigan'?'selected':''}>(${t.seed}) ${t.name}</option>`).join('');
-  });
-}
-
-function runMatchup() {
-  const an=document.getElementById('team-a').value, bn=document.getElementById('team-b').value;
-  const a=TM[an],b=TM[bn]; if(!a||!b||a===b)return;
-  const m=margin(a,b), sd=sigma(), p=wp(a,b);
-  let aw=0; for(let i=0;i<10000;i++) if(sim(an,bn)===an) aw++;
-  const pa=aw/100, pb=100-pa;
-  document.getElementById('matchup-result').innerHTML=`<div class="matchup-detail">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div style="font-size:18px;font-weight:700">(${a.seed}) ${a.name}</div>
-      <div style="font-size:13px;color:var(--text2)">vs</div>
-      <div style="font-size:18px;font-weight:700;text-align:right">(${b.seed}) ${b.name}</div>
-    </div>
-    <div class="matchup-bar">
-      <div class="side side-a" style="width:${pa}%">${pa.toFixed(1)}%</div>
-      <div class="side side-b" style="width:${pb}%">${pb.toFixed(1)}%</div>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:16px;font-size:11px;color:var(--text2)">
-      <span>Analytical: ${(p*100).toFixed(1)}%</span>
-      <span>Spread: <strong style="color:var(--text)">${m>0?a.name:b.name} -${Math.abs(m).toFixed(1)}</strong> · σ=${sd.toFixed(1)}</span>
-      <span>Analytical: ${((1-p)*100).toFixed(1)}%</span>
-    </div>
-    <div class="matchup-stats">
-      <div class="val-a mono">${a.adjOE}</div><div class="label">Adj OE</div><div class="val-b mono">${b.adjOE}</div>
-      <div class="val-a mono">${a.adjDE}</div><div class="label">Adj DE</div><div class="val-b mono">${b.adjDE}</div>
-      <div class="val-a mono">${a.tempo}</div><div class="label">Tempo</div><div class="val-b mono">${b.tempo}</div>
-      <div class="val-a mono">${a.sos.toFixed(2)}</div><div class="label">SOS</div><div class="val-b mono">${b.sos.toFixed(2)}</div>
-      <div class="val-a mono">${a.momentum.toFixed(2)}</div><div class="label">Momentum</div><div class="val-b mono">${b.momentum.toFixed(2)}</div>
-      <div class="val-a mono">${a.experience.toFixed(2)}</div><div class="label">Experience</div><div class="val-b mono">${b.experience.toFixed(2)}</div>
-    </div>
-    <div class="diag" style="margin-top:16px">W: eff=${W.eff} sos=${W.sos} mom=${W.mom} exp=${W.exp} var=${W['var']} | margin=${m.toFixed(2)} σ=${sd.toFixed(1)} z=${(m/sd).toFixed(3)} | 10K: ${aw}-${10000-aw}</div>
-  </div>`;
-}
-
-function renderWeights() {
-  document.getElementById('weights-grid').innerHTML=WD.map(d=>`<div class="weight-group"><h3>${d.label}</h3><p>${d.desc}</p><div class="slider-row"><input type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${d.v}" oninput="W['${d.id}']=parseFloat(this.value);document.getElementById('vd-${d.id}').textContent=this.value;updWR()" onchange="W['${d.id}']=parseFloat(this.value);document.getElementById('vd-${d.id}').textContent=this.value;updWR()"><span class="slider-val" id="vd-${d.id}">${d.v}</span></div></div>`).join('');
-  updWR();
-}
-
-function updWR() {
-  const sd=sigma();
-  const dm=margin(TM.Duke,TM.Siena), dp=ncdf(dm/sd)*100;
-  const sm=margin(TM["St. John's"],TM["Northern Iowa"]), sp=ncdf(sm/sd)*100;
-  const om=margin(TM["Ohio State"],TM.TCU), op=ncdf(om/sd)*100;
-  document.getElementById('weight-readout').innerHTML=
-    `<b>Active:</b> eff=${W.eff} sos=${W.sos} mom=${W.mom} exp=${W.exp} var=${W['var']}<br>`+
-    `<b>σ=${sd.toFixed(1)}pts</b> | Duke-Siena(1v16): ${dm.toFixed(1)}pts → ${dp.toFixed(1)}% | StJ-NIowa(5v12): ${sm.toFixed(1)}pts → ${sp.toFixed(1)}% | OSU-TCU(8v9): ${om.toFixed(1)}pts → ${op.toFixed(1)}%`;
-}
-
-function renderData() {
-  document.getElementById('data-tbody').innerHTML=
-    [...TEAMS].sort((a,b)=>a.seed-b.seed||a.name.localeCompare(b.name)).map(t=>`<tr>
-      <td class="mono">${t.seed}</td><td style="font-weight:600">${t.name}</td><td>${t.region}</td><td class="mono">${t.record}</td>
-      <td><input type="number" value="${t.adjOE}" step="0.5" onchange="TM['${t.name.replace(/'/g,"\\'")}'].adjOE=+this.value"></td>
-      <td><input type="number" value="${t.adjDE}" step="0.5" onchange="TM['${t.name.replace(/'/g,"\\'")}'].adjDE=+this.value"></td>
-      <td><input type="number" value="${t.tempo}" step="0.5" onchange="TM['${t.name.replace(/'/g,"\\'")}'].tempo=+this.value"></td>
-      <td><input type="number" value="${t.sos}" step="0.05" onchange="TM['${t.name.replace(/'/g,"\\'")}'].sos=+this.value"></td>
-      <td><input type="number" value="${t.momentum}" step="0.05" onchange="TM['${t.name.replace(/'/g,"\\'")}'].momentum=+this.value"></td>
-      <td><input type="number" value="${t.experience}" step="0.05" onchange="TM['${t.name.replace(/'/g,"\\'")}'].experience=+this.value"></td>
-    </tr>`).join('');
-}
-
-// ========== DATA IMPORTER ==========
-
-// Aliases: engine name → possible Barttorvik names
-const NAME_ALIASES = {
-  "Duke":"Duke","Siena":"Siena","Ohio State":"Ohio St.","TCU":"TCU",
-  "St. John's":"St. John's","Northern Iowa":"Northern Iowa","Kansas":"Kansas",
-  "Cal Baptist":"Cal Baptist","Louisville":"Louisville","South Florida":"South Florida",
-  "Michigan State":"Michigan St.","North Dakota State":"North Dakota St.",
-  "UCLA":"UCLA","UCF":"UCF","UConn":"Connecticut","Furman":"Furman",
-  "Arizona":"Arizona","LIU":"LIU","Villanova":"Villanova","Utah State":"Utah St.",
-  "Wisconsin":"Wisconsin","High Point":"High Point","Arkansas":"Arkansas",
-  "Hawaii":"Hawaii","BYU":"BYU","Texas":"Texas","NC State":"N.C. State",
-  "Gonzaga":"Gonzaga","Kennesaw State":"Kennesaw St.","Miami FL":"Miami FL",
-  "Missouri":"Missouri","Purdue":"Purdue","Queens":"Queens",
-  "Michigan":"Michigan","UMBC":"UMBC","Howard":"Howard","Georgia":"Georgia",
-  "Saint Louis":"Saint Louis","Texas Tech":"Texas Tech","Akron":"Akron",
-  "Alabama":"Alabama","Hofstra":"Hofstra","Tennessee":"Tennessee",
-  "SMU":"SMU","Miami OH":"Miami OH","Virginia":"Virginia",
-  "Wright State":"Wright St.","Kentucky":"Kentucky","Santa Clara":"Santa Clara",
-  "Iowa State":"Iowa St.","Tennessee State":"Tennessee St.",
-  "Florida":"Florida","Prairie View A&M":"Prairie View A&M","Lehigh":"Lehigh",
-  "Clemson":"Clemson","Iowa":"Iowa","Vanderbilt":"Vanderbilt","McNeese":"McNeese",
-  "Nebraska":"Nebraska","Troy":"Troy","North Carolina":"North Carolina",
-  "VCU":"VCU","Illinois":"Illinois","Penn":"Penn",
-  "Saint Mary's":"Saint Mary's","Texas A&M":"Texas A&M","Houston":"Houston","Idaho":"Idaho"
-};
-
-// Build reverse lookup: normalize name → engine name
-const REVERSE_ALIASES = {};
-for (const [eng, bart] of Object.entries(NAME_ALIASES)) {
-  REVERSE_ALIASES[norm(eng)] = eng;
-  REVERSE_ALIASES[norm(bart)] = eng;
-}
-// Extra aliases for Barttorvik quirks
-REVERSE_ALIASES['connecticut'] = 'UConn';
-REVERSE_ALIASES['stjohnsny'] = "St. John's";
-REVERSE_ALIASES['stmarysca'] = "Saint Mary's";
-REVERSE_ALIASES['prairieviewam'] = 'Prairie View A&M';
-REVERSE_ALIASES['ncstate'] = 'NC State';
-REVERSE_ALIASES['californiabaptist'] = 'Cal Baptist';
-REVERSE_ALIASES['calbaptist'] = 'Cal Baptist';
-REVERSE_ALIASES['miamifl'] = 'Miami FL';
-REVERSE_ALIASES['miamioh'] = 'Miami OH';
-REVERSE_ALIASES['sflorida'] = 'South Florida';
-REVERSE_ALIASES['usf'] = 'South Florida';
-
-function norm(s) {
-  return s.toLowerCase().replace(/[^a-z0-9]/g,'').replace(/saint/g,'st').replace(/state/g,'st').replace(/north/g,'n').replace(/south/g,'s');
-}
-
-function matchTeam(rawName) {
-  const n = norm(rawName);
-  // Direct hit
-  if (REVERSE_ALIASES[n]) return REVERSE_ALIASES[n];
-  // Try startsWith for partial matches
-  for (const [key, eng] of Object.entries(REVERSE_ALIASES)) {
-    if (n.startsWith(key) || key.startsWith(n)) return eng;
-  }
-  // Fuzzy: find best overlap
-  let best = null, bestScore = 0;
-  for (const [key, eng] of Object.entries(REVERSE_ALIASES)) {
-    let score = 0;
-    const shorter = n.length < key.length ? n : key;
-    const longer = n.length < key.length ? key : n;
-    for (let i = 0; i < shorter.length; i++) { if (longer.includes(shorter[i])) score++; }
-    score = score / longer.length;
-    if (score > bestScore && score > 0.6) { bestScore = score; best = eng; }
-  }
-  return best;
-}
-
-let parsedLines = [];
-let parsedDelim = '\t';
-let pendingImport = [];
-
-function parseImport() {
-  const raw = document.getElementById('import-area').value.trim();
-  if (!raw) return;
-  
-  const lines = raw.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 3) { document.getElementById('import-status').textContent = 'Need at least 3 rows'; return; }
-  
-  // Detect delimiter
-  const tabCount = (lines[0].match(/\t/g)||[]).length;
-  const commaCount = (lines[0].match(/,/g)||[]).length;
-  parsedDelim = tabCount >= commaCount ? '\t' : ',';
-  parsedLines = lines;
-  
-  // Get columns from first row
-  const headers = lines[0].split(parsedDelim).map(h => h.trim());
-  const numCols = headers.length;
-  
-  // Sample data from first few data rows for display
-  const samples = [];
-  for (let c = 0; c < numCols; c++) {
-    const vals = [];
-    for (let r = 1; r <= Math.min(3, lines.length-1); r++) {
-      const cell = lines[r].split(parsedDelim)[c]?.trim() || '';
-      vals.push(cell);
-    }
-    samples.push(vals);
-  }
-  
-  // Build column picker UI
-  const fields = [
-    {id:'col-team', label:'Team Name', hint:'The column with team names'},
-    {id:'col-oe', label:'AdjOE', hint:'Adjusted offensive efficiency (values like 95-130)'},
-    {id:'col-de', label:'AdjDE', hint:'Adjusted defensive efficiency (values like 85-115)'},
-    {id:'col-tempo', label:'Tempo', hint:'Adjusted tempo (values like 60-75)'},
-  ];
-  
-  const preview = document.getElementById('import-preview');
-  preview.style.display = 'block';
-  preview.innerHTML = `
-    <div class="diag" style="margin-bottom:12px">
-      <b>Step 1: Map your columns.</b> Found ${numCols} columns and ${lines.length-1} data rows.<br>
-      For each field below, select which column from your data matches. Look at the sample values to identify the right one.<br>
-      <b>Tip:</b> AdjOE values are typically 95-130. AdjDE values are similar (lower = better defense). Ranks are 1-363. Don't pick a rank column!
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:16px">
-      ${fields.map(f => `
-        <div class="weight-group" style="padding:14px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:2px">${f.label}</div>
-          <div style="font-size:10px;color:var(--text2);margin-bottom:8px">${f.hint}</div>
-          <select id="${f.id}" style="width:100%;font-family:'DM Mono',monospace;font-size:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:8px">
-            <option value="-1">— skip —</option>
-            ${headers.map((h, i) => `<option value="${i}">Col ${i}: "${h}" → ${samples[i]?.join(', ')}</option>`).join('')}
-          </select>
+      // Header
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+        <div class="page-title">${monthName}</div>
+        <div class="week-nav">
+          <button class="btn" onclick="shiftMonth(-1)">‹</button>
+          ${!isThisMonth ? '<button class="btn-today" onclick="goThisMonth()">This Month</button>' : ''}
+          <button class="btn" onclick="shiftMonth(1)">›</button>
         </div>
-      `).join('')}
-    </div>
-    <button class="btn btn-primary" onclick="previewMapped()">Preview Mapped Data</button>
-  `;
-  document.getElementById('import-status').textContent = 'Map columns, then preview';
-}
+      </div>`;
 
-function previewMapped() {
-  const colTeam = +document.getElementById('col-team').value;
-  const colOE = +document.getElementById('col-oe').value;
-  const colDE = +document.getElementById('col-de').value;
-  const colTempo = +document.getElementById('col-tempo').value;
-  
-  if (colTeam < 0) { document.getElementById('import-status').textContent = 'You must select a Team Name column'; return; }
-  
-  const rows = [];
-  for (let i = 1; i < parsedLines.length; i++) {
-    const cols = parsedLines[i].split(parsedDelim).map(c => c.trim());
-    const rawName = cols[colTeam];
-    if (!rawName || rawName.length < 2) continue;
-    
-    const engineName = matchTeam(rawName);
-    if (!engineName) continue;
-    
-    const row = { raw: rawName, engine: engineName };
-    if (colOE >= 0) { const v = parseFloat(cols[colOE]); if (!isNaN(v) && v >= 70 && v <= 150) row.oe = v; }
-    if (colDE >= 0) { const v = parseFloat(cols[colDE]); if (!isNaN(v) && v >= 70 && v <= 150) row.de = v; }
-    if (colTempo >= 0) { const v = parseFloat(cols[colTempo]); if (!isNaN(v) && v >= 50 && v <= 85) row.tempo = v; }
-    
-    rows.push(row);
-  }
-  
-  if (rows.length === 0) { document.getElementById('import-status').textContent = 'No tournament teams found'; return; }
-  
-  pendingImport = rows;
-  
-  // Sanity check: show average AdjOE and AdjDE to catch rank vs value confusion
-  const oeVals = rows.filter(r=>r.oe).map(r=>r.oe);
-  const deVals = rows.filter(r=>r.de).map(r=>r.de);
-  const avgOE = oeVals.length ? (oeVals.reduce((a,b)=>a+b)/oeVals.length) : 0;
-  const avgDE = deVals.length ? (deVals.reduce((a,b)=>a+b)/deVals.length) : 0;
-  
-  let warning = '';
-  if (avgOE > 0 && (avgOE < 95 || avgOE > 125)) warning += `<span style="color:var(--red)">⚠ AdjOE avg is ${avgOE.toFixed(1)} — expected ~105-115. You may have selected a rank column instead of the value column.</span><br>`;
-  if (avgDE > 0 && (avgDE < 90 || avgDE > 120)) warning += `<span style="color:var(--red)">⚠ AdjDE avg is ${avgDE.toFixed(1)} — expected ~95-110. You may have selected a rank column instead of the value column.</span><br>`;
-  
-  const preview = document.getElementById('import-preview');
-  preview.innerHTML = `
-    <div class="diag" style="margin-bottom:8px">
-      <b>Matched ${rows.length} of 68 tournament teams</b> · AdjOE avg: ${avgOE.toFixed(1)} · AdjDE avg: ${avgDE.toFixed(1)}<br>
-      ${warning}
-      ${!warning ? '<span style="color:var(--green)">✓ Values look reasonable</span>' : 'If the averages look wrong, go back and pick different columns.'}
-    </div>
-    <div class="data-table-wrap" style="max-height:300px;overflow-y:auto">
-      <table class="data-table">
-        <thead><tr><th>Source</th><th>→ Engine</th><th>New OE</th><th>New DE</th><th>New Tempo</th><th>Cur OE</th><th>Cur DE</th></tr></thead>
-        <tbody>${rows.map(r => {
-          const cur = TM[r.engine];
-          return `<tr>
-            <td class="mono" style="font-size:11px">${r.raw}</td>
-            <td style="font-weight:600">${r.engine}</td>
-            <td class="mono" style="${r.oe && Math.abs(r.oe-cur.adjOE)>0.5?'color:var(--green)':''}">${r.oe?.toFixed(1)||'—'}</td>
-            <td class="mono" style="${r.de && Math.abs(r.de-cur.adjDE)>0.5?'color:var(--green)':''}">${r.de?.toFixed(1)||'—'}</td>
-            <td class="mono">${r.tempo?.toFixed(1)||'—'}</td>
-            <td class="mono" style="color:var(--text2)">${cur.adjOE}</td>
-            <td class="mono" style="color:var(--text2)">${cur.adjDE}</td>
-          </tr>`;
-        }).join('')}</tbody>
-      </table>
-    </div>
-    <div style="margin-top:12px;display:flex;gap:12px">
-      <button class="btn btn-primary" style="background:var(--green)" onclick="applyImport()">&#10003; Apply ${rows.length} Teams to Engine</button>
-      <button class="btn btn-primary" style="background:var(--surface2);color:var(--text)" onclick="parseImport()">← Back to Column Mapping</button>
-    </div>
-  `;
-  document.getElementById('import-status').textContent = `${rows.length} teams ready`;
-}
+      // Calendar grid
+      html += '<div class="cal-grid">';
+      for (const d of dayNames) {
+        html += `<div class="cal-header">${d}</div>`;
+      }
 
-function applyImport() {
-  let updated = 0;
-  pendingImport.forEach(r => {
-    const team = TM[r.engine];
-    if (!team) return;
-    let changed = false;
-    if (r.oe && !isNaN(r.oe)) { team.adjOE = r.oe; changed = true; }
-    if (r.de && !isNaN(r.de)) { team.adjDE = r.de; changed = true; }
-    if (r.tempo && !isNaN(r.tempo)) { team.tempo = r.tempo; changed = true; }
-    if (changed) updated++;
-  });
-  renderData();
-  document.getElementById('import-status').textContent = `✓ Updated ${updated} teams. Table refreshed.`;
-  document.getElementById('import-preview').style.display = 'none';
-  document.getElementById('import-area').value = '';
-  pendingImport = [];
-}
+      // ---- SLOT ALLOCATION for multi-day events ----
+      // Separate multi-day vs single-day events
+      const multiDayEvents = events.filter(e => e.endDate && e.endDate !== e.date);
+      const singleDayEvents = events.filter(e => !e.endDate || e.endDate === e.date);
 
-// ========== BRACKET FILTERS ==========
-function initFilters() {
-  const sorted = [...TEAMS].sort((a,b) => a.seed - b.seed || a.name.localeCompare(b.name));
-  
-  // Champion dropdown
-  const champSel = document.getElementById('f-champ');
-  sorted.forEach(t => {
-    champSel.innerHTML += `<option value="${t.name}">(${t.seed}) ${t.name}</option>`;
-  });
-  
-  // Team must reach dropdown
-  const reachSel = document.getElementById('f-team-reach');
-  sorted.forEach(t => {
-    reachSel.innerHTML += `<option value="${t.name}">(${t.seed}) ${t.name}</option>`;
-  });
-  
-  // Conference dropdown — get unique conferences
-  const confs = [...new Set(TEAMS.map(t => {
-    // Map short conf codes back from CSV. Use what we have in team data.
-    // We don't store conf in TEAMS, so derive from the CSV mapping
-    return null; // Will populate from known list
-  }))];
-  
-  // Hardcode conference list for tournament teams
-  const confList = ['SEC','Big Ten','ACC','Big 12','Big East','WCC','A10','MAC',
-    'MVC','American','CAA','ASUN','Summit','Southland','Big South','Big West',
-    'Sun Belt','Big Sky','Horizon','Ivy','SoCon','SWAC','Patriot','MEAC',
-    'NEC','OVC','MAAC','WAC','MWC','CUSA'];
-  const confSel = document.getElementById('f-conf-name');
-  confList.forEach(c => {
-    confSel.innerHTML += `<option value="${c}">${c}</option>`;
-  });
-}
+      // Sort multi-day: earlier start first, then longer events first
+      multiDayEvents.sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        const aDur = (new Date(a.endDate) - new Date(a.date));
+        const bDur = (new Date(b.endDate) - new Date(b.date));
+        return bDur - aDur; // longer first
+      });
 
-// Extract teams at each round from a sim result
-function getTeamsAtRound(s, round) {
-  const teams = new Set();
-  if (round === 'r32') {
-    for (const r of Object.values(s.R)) r.r1.forEach(t => teams.add(t));
-  } else if (round === 's16') {
-    for (const r of Object.values(s.R)) r.r2.forEach(t => teams.add(t));
-  } else if (round === 'e8') {
-    for (const r of Object.values(s.R)) r.r3.forEach(t => teams.add(t));
-  } else if (round === 'ff') {
-    for (const r of Object.values(s.R)) teams.add(r.winner);
-  }
-  return teams;
-}
+      // Build date strings for the month
+      const monthDates = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        monthDates.push(`${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+      }
 
-// Conference lookup — build once from Barttorvik CSV name mapping
-const TEAM_CONF = {};
-// We'll set these from the CSV data we parsed. For now, hardcode from the 2026 bracket.
-(function(){
-  const confMap = {
-    "Duke":"ACC","Siena":"MAAC","Ohio State":"Big Ten","TCU":"Big 12",
-    "St. John's":"Big East","Northern Iowa":"MVC","Kansas":"Big 12","Cal Baptist":"WAC",
-    "Louisville":"ACC","South Florida":"American","Michigan State":"Big Ten","North Dakota State":"Summit",
-    "UCLA":"Big Ten","UCF":"Big 12","UConn":"Big East","Furman":"SoCon",
-    "Arizona":"Big 12","LIU":"NEC","Villanova":"Big East","Utah State":"MWC",
-    "Wisconsin":"Big Ten","High Point":"Big South","Arkansas":"SEC","Hawaii":"Big West",
-    "BYU":"Big 12","Texas":"SEC","NC State":"ACC","Gonzaga":"WCC",
-    "Kennesaw State":"ASUN","Miami FL":"ACC","Missouri":"SEC","Purdue":"Big Ten",
-    "Queens":"ASUN","Michigan":"Big Ten","UMBC":"AEC","Howard":"MEAC",
-    "Georgia":"SEC","Saint Louis":"A10","Texas Tech":"Big 12","Akron":"MAC",
-    "Alabama":"SEC","Hofstra":"CAA","Tennessee":"SEC","SMU":"ACC",
-    "Miami OH":"MAC","Virginia":"ACC","Wright State":"Horizon","Kentucky":"SEC",
-    "Santa Clara":"WCC","Iowa State":"Big 12","Tennessee State":"OVC",
-    "Florida":"SEC","Prairie View A&M":"SWAC","Lehigh":"Patriot",
-    "Clemson":"ACC","Iowa":"Big Ten","Vanderbilt":"SEC","McNeese":"Southland",
-    "Nebraska":"Big Ten","Troy":"Sun Belt","North Carolina":"ACC","VCU":"A10",
-    "Illinois":"Big Ten","Penn":"Ivy","Saint Mary's":"WCC","Texas A&M":"SEC",
-    "Houston":"Big 12","Idaho":"Big Sky"
-  };
-  for (const [team, conf] of Object.entries(confMap)) TEAM_CONF[team] = conf;
-})();
+      // slotMap[dateStr] = { 0: event, 1: event, ... }
+      const slotMap = {};
+      for (const ds of monthDates) slotMap[ds] = {};
 
-function checkFilters(s) {
-  // Champion filter
-  const fChamp = document.getElementById('f-champ').value;
-  if (fChamp && s.champ !== fChamp) return false;
-  
-  // Team must reach round
-  const fTeam = document.getElementById('f-team-reach').value;
-  const fRound = document.getElementById('f-team-round').value;
-  if (fTeam) {
-    const reached = getTeamsAtRound(s, fRound);
-    // Also check champ and FF
-    if (fRound === 'ff' || fRound === 'e8' || fRound === 's16' || fRound === 'r32') {
-      // getTeamsAtRound handles it, but for FF we need the region winners
+      // Assign each multi-day event a consistent slot
+      for (const evt of multiDayEvents) {
+        // Get the dates this event covers within this month
+        const coveredDates = monthDates.filter(ds => ds >= evt.date && ds <= evt.endDate);
+        if (coveredDates.length === 0) continue;
+
+        // Find the lowest slot that's free across ALL covered dates
+        let slot = 0;
+        while (true) {
+          const free = coveredDates.every(ds => !slotMap[ds][slot]);
+          if (free) break;
+          slot++;
+        }
+
+        // Reserve this slot on all covered dates
+        for (const ds of coveredDates) {
+          slotMap[ds][slot] = evt;
+        }
+      }
+
+      // Build single-day lookup: dateStr → [events]
+      const singleMap = {};
+      for (const evt of singleDayEvents) {
+        if (!singleMap[evt.date]) singleMap[evt.date] = [];
+        singleMap[evt.date].push(evt);
+      }
+
+      // Collect overlay data for multi-day events (deduplicated)
+      overlayEvents = [];
+      const seenOverlay = new Set();
+      for (const evt of multiDayEvents) {
+        const key = evt._templateId || evt.id;
+        if (seenOverlay.has(key)) continue;
+        seenOverlay.add(key);
+        // Find slot for this event
+        const firstCovered = monthDates.find(ds => ds >= evt.date && ds <= evt.endDate);
+        if (!firstCovered) continue;
+        const slot = Object.keys(slotMap[firstCovered]).find(s => {
+          const e = slotMap[firstCovered][s];
+          return e && (e._templateId || e.id) === key;
+        });
+        if (slot !== undefined) {
+          overlayEvents.push({ evt, slot: parseInt(slot) });
+        }
+      }
+
+      // Empty cells before first day
+      for (let i = 0; i < firstDay; i++) {
+        html += '<div class="cal-cell empty"></div>';
+      }
+
+      // Day cells
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = monthDates[d - 1];
+        const isToday = dateStr === todayISO ? ' today' : '';
+        const slots = slotMap[dateStr];
+        const singles = singleMap[dateStr] || [];
+
+        // Find max slot index for this date
+        const slotKeys = Object.keys(slots).map(Number);
+        const maxSlot = slotKeys.length > 0 ? Math.max(...slotKeys) : -1;
+
+        let cellContent = `<div class="cal-day-num">${d}</div>`;
+
+        // Render invisible placeholders for multi-day slots (reserves vertical space)
+        for (let s = 0; s <= maxSlot; s++) {
+          cellContent += `<div class="cal-event-placeholder">&nbsp;</div>`;
+        }
+
+        // Render single-day events below the slots
+        for (const evt of singles.slice(0, Math.max(0, 3 - maxSlot - 1))) {
+          const style = Store.getCategoryStyle(evt.category);
+          cellContent += `<div class="cal-event-label" style="background:${style.bg};color:${style.color}" onclick="event.stopPropagation();handleEventClick('${evt._templateId || evt.id}')">${evt.title}</div>`;
+        }
+
+        const totalVisible = (maxSlot + 1) + singles.length;
+        if (totalVisible > 3) {
+          cellContent += `<div class="cal-more-link" onclick="event.stopPropagation();showDayPopover('${dateStr}', event)">+${totalVisible - 3} more</div>`;
+        }
+
+        // Meal indicator
+        const meal = calMeals[dateStr];
+        if (meal) {
+          cellContent += `<div class="cal-meal-label">🍽 ${meal.title}</div>`;
+        }
+
+        html += `<div class="cal-cell${isToday}" data-date="${dateStr}"
+          onmousedown="handleDragStart('${dateStr}', event)"
+          onmouseover="handleDragOver('${dateStr}')"
+          ontouchstart="handleDragStart('${dateStr}', event)"
+          ontouchmove="(function(e){ var t = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY); if(t) { var cell = t.closest('[data-date]'); if(cell) handleDragOver(cell.getAttribute('data-date')); } })(event)"
+          >${cellContent}</div>`;
+      }
+
+      html += '</div>';
+
+      // Event list below calendar
+      if (events.length > 0) {
+        html += '<div class="card" style="margin-top:20px">';
+        html += `<div class="card-header">
+          <span class="card-title">Events in ${monthName}</span>
+          <button class="btn btn--sm" onclick="openModal()">+ Event</button>
+        </div>`;
+        html += '<div class="stack-sm">';
+        for (const e of events) {
+          html += Comp.eventItem(e, { showDate: true, hideTasks: true });
+        }
+        html += '</div></div>';
+      }
+
+      document.getElementById('app').innerHTML = html;
+      requestAnimationFrame(() => renderMultiDayOverlays());
     }
-    if (!reached.has(fTeam)) {
-      // Also check if they're the champ (champ reached all rounds)
-      if (fRound === 'ff' && s.champ === fTeam) {} // champ is in FF
-      else return false;
+
+    // ---- MULTI-DAY OVERLAY BARS ----
+    function renderMultiDayOverlays() {
+      document.querySelectorAll('.cal-span-overlay').forEach(el => el.remove());
+      const grid = document.querySelector('.cal-grid');
+      if (!grid || overlayEvents.length === 0) return;
+
+      const gridRect = grid.getBoundingClientRect();
+
+      for (const { evt, slot } of overlayEvents) {
+        const startDate = evt.date;
+        const endDate = evt.endDate;
+
+        // Find all cells this event covers
+        const cells = [];
+        grid.querySelectorAll('.cal-cell[data-date]').forEach(cell => {
+          const d = cell.getAttribute('data-date');
+          if (d >= startDate && d <= endDate) {
+            cells.push({ date: d, el: cell });
+          }
+        });
+        if (cells.length === 0) continue;
+
+        // Group cells by visual row (same top = same week)
+        const rowGroups = [];
+        let currentGroup = [cells[0]];
+        for (let i = 1; i < cells.length; i++) {
+          const prevTop = cells[i - 1].el.getBoundingClientRect().top;
+          const thisTop = cells[i].el.getBoundingClientRect().top;
+          if (Math.abs(thisTop - prevTop) < 5) {
+            currentGroup.push(cells[i]);
+          } else {
+            rowGroups.push(currentGroup);
+            currentGroup = [cells[i]];
+          }
+        }
+        rowGroups.push(currentGroup);
+
+        const style = Store.getCategoryStyle(evt.category);
+
+        for (const group of rowGroups) {
+          const firstEl = group[0].el;
+          const lastEl = group[group.length - 1].el;
+          const firstRect = firstEl.getBoundingClientRect();
+          const lastRect = lastEl.getBoundingClientRect();
+
+          const isEventStart = group[0].date === startDate;
+          const isEventEnd = group[group.length - 1].date === endDate;
+
+          // Position relative to grid container
+          const inset = 3; // small inset from cell edges for rounding
+          const left = firstRect.left - gridRect.left + (isEventStart ? inset : 0);
+          const right = lastRect.right - gridRect.left - (isEventEnd ? inset : 0);
+          const barWidth = right - left;
+
+          // Vertical: day-num height (~22px) + slot offset
+          const slotHeight = 16;
+          const dayNumHeight = 22;
+          const top = (firstRect.top - gridRect.top) + dayNumHeight + (slot * slotHeight);
+
+          const bar = document.createElement('div');
+          bar.className = 'cal-span-overlay';
+          bar.style.cssText = `
+            left: ${left}px;
+            top: ${top}px;
+            width: ${barWidth}px;
+            background: ${style.bg};
+            color: ${style.color};
+            border-radius: ${isEventStart ? 3 : 0}px ${isEventEnd ? 3 : 0}px ${isEventEnd ? 3 : 0}px ${isEventStart ? 3 : 0}px;
+          `;
+
+          // Show label on event start and on week-row continuations
+          bar.textContent = (isEventStart || !isEventStart) ? evt.title : '';
+
+          bar.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleEventClick(evt._templateId || evt.id);
+          });
+
+          grid.appendChild(bar);
+        }
+      }
     }
-  }
-  
-  // #1 seeds in Final Four
-  const fOnes = document.getElementById('f-ones-ff').value;
-  if (fOnes !== '') {
-    const ffTeams = [...getTeamsAtRound(s, 'ff')];
-    const oneSeeds = ffTeams.filter(t => TM[t]?.seed === 1).length;
-    if (oneSeeds !== parseInt(fOnes)) return false;
-  }
-  
-  // Cinderella depth
-  const fCindSeed = document.getElementById('f-cind-seed').value;
-  const fCindRound = document.getElementById('f-cind-round').value;
-  if (fCindSeed) {
-    const minSeed = parseInt(fCindSeed);
-    const reached = getTeamsAtRound(s, fCindRound);
-    const cinderellas = [...reached].filter(t => TM[t]?.seed >= minSeed);
-    if (cinderellas.length === 0) return false;
-  }
-  
-  // Conference depth
-  const fConfName = document.getElementById('f-conf-name').value;
-  const fConfMin = parseInt(document.getElementById('f-conf-min').value);
-  const fConfRound = document.getElementById('f-conf-round').value;
-  if (fConfName) {
-    const reached = getTeamsAtRound(s, fConfRound);
-    const confTeams = [...reached].filter(t => TEAM_CONF[t] === fConfName);
-    if (confTeams.length < fConfMin) return false;
-  }
-  
-  // Lowest seed in Final Four
-  const fLowFF = document.getElementById('f-low-ff').value;
-  if (fLowFF) {
-    const minSeed = parseInt(fLowFF);
-    const ffTeams = [...getTeamsAtRound(s, 'ff')];
-    const hasLow = ffTeams.some(t => TM[t]?.seed >= minSeed);
-    if (!hasLow) return false;
-  }
-  
-  return true;
-}
 
-document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  tab.classList.add('active');
-  document.getElementById(tab.dataset.tab+'-panel').classList.add('active');
-}));
+    // Re-layout overlays on resize
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (Store.data) renderMultiDayOverlays();
+      }, 150);
+    });
 
-renderWeights();
-renderData();
-initMatchup();
-initFilters();
-</script>
+    // ---- INIT ----
+    initMonth();
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await Store.init();
+        renderPage();
+
+        // Load meal data for this month (non-blocking, re-renders when done)
+        loadMealsForMonth(currentYear, currentMonth).then(() => renderPage());
+      } catch (err) {
+        document.getElementById('app').innerHTML =
+          `<div class="error-state"><h2>Cannot reach the server</h2><p>${err.message}</p></div>`;
+      }
+    });
+
+    document.getElementById('event-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+  </script>
 </body>
 </html>
