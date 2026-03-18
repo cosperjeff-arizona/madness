@@ -318,7 +318,7 @@ table.data-table tr:hover { background:var(--surface); }
   <div id="import-preview" style="display:none;margin-bottom:20px"></div>
   <div class="data-table-wrap">
     <table class="data-table"><thead><tr>
-      <th>#</th><th>Team</th><th>Rgn</th><th>Rec</th><th>AdjOE</th><th>AdjDE</th><th>Tempo</th><th>SOS</th><th>Mom</th><th>Exp</th>
+      <th>#</th><th>Team</th><th>Rgn</th><th>Rec</th><th>AdjOE</th><th>AdjDE</th><th>Tempo</th><th>SOS</th><th>Mom</th><th>Exp</th><th>Trav</th>
     </tr></thead><tbody id="data-tbody"></tbody></table>
   </div>
 </div>
@@ -343,6 +343,7 @@ table.data-table tr:hover { background:var(--surface); }
       <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--text);font-weight:600">SOS</td><td style="padding:8px;color:var(--text2)">Strength of schedule from the same CSV (column 16), Barttorvik's composite schedule strength metric</td></tr>
       <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--text);font-weight:600">Momentum</td><td style="padding:8px;color:var(--text2)">Derived from Barttorvik's <strong style="color:var(--text)">H-Rank</strong> page (last 10 games adjusted efficiency). Calculated as the delta between last-10 efficiency margin and full-season efficiency margin, normalized to 0–1. Above 0.5 = peaking, below 0.5 = fading.</td></tr>
       <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--text);font-weight:600">Experience</td><td style="padding:8px;color:var(--text2)">Composite score derived from three factors: <strong style="color:var(--text)">(1)</strong> tournament appearances in the last 5 years (2022-2026), weighted 35%; <strong style="color:var(--text)">(2)</strong> deepest recent tournament run (championship=1.0, Final Four=0.8, Elite Eight=0.65, Sweet 16=0.5, etc.), weighted 35%; <strong style="color:var(--text)">(3)</strong> program pedigree tier (blue blood=1.0, elite program=0.67, solid program=0.33, mid/low-major=0.0), weighted 30%. Sources: NCAA.com tournament history, ESPN Champ Week tracker, Wikipedia tournament bids by school.</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--text);font-weight:600">Travel</td><td style="padding:8px;color:var(--text2)">Cumulative travel distance (in miles) from campus through each tournament venue, assuming the team reaches the Final Four. Calculated via haversine formula using campus coordinates, R64/R32 game sites (from NCAA/ESPN schedules), regional S16/E8 sites, and the Final Four in Indianapolis. Normalized to 0–1 where 1.0 = shortest travel (Tennessee State: 678mi) and 0.0 = longest (Hawaii: 5,088mi). No West Coast team has won the championship since Arizona in 1997.</td></tr>
     </table>
 
     <h3 style="font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--text)">3. Game Simulation</h3>
@@ -370,6 +371,7 @@ table.data-table tr:hover { background:var(--surface); }
       <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--accent);font-weight:600">Momentum (0–5)</td><td style="padding:8px;color:var(--text2)">Points added/subtracted per unit of momentum difference. Data-driven from Barttorvik H-Rank (last 10 games efficiency vs season average). Captures teams peaking or fading entering the tournament.</td></tr>
       <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--accent);font-weight:600">Experience (0–5)</td><td style="padding:8px;color:var(--text2)">Points added/subtracted per unit of experience difference. Data-driven composite of tournament frequency (last 5 years), deepest recent run, and program pedigree. Kansas/Houston (0.97) vs Cal Baptist (0.07) = 0.9 unit gap × weight.</td></tr>
       <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--accent);font-weight:600">Variance (0–5)</td><td style="padding:8px;color:var(--text2)">Controls game-to-game randomness (σ). At 0: σ=4pts (nearly deterministic). At 1.0: σ=11pts (matches real basketball). At 2+: increased chaos. This is the primary lever for upset frequency.</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;color:var(--accent);font-weight:600">Travel (0–5)</td><td style="padding:8px;color:var(--text2)">Points added/subtracted per unit of travel advantage difference. Penalizes teams with long cumulative travel routes through the bracket. At default (1.5), a team traveling 5,000mi vs one traveling 700mi sees roughly a 1.4-point margin shift. Based on haversine distances from campus to each game site through Indianapolis.</td></tr>
     </table>
 
     <h3 style="font-size:15px;font-weight:700;margin:24px 0 8px;color:var(--text)">7. Limitations & Future Work</h3>
@@ -390,78 +392,78 @@ table.data-table tr:hover { background:var(--surface); }
 <script>
 // ========== TEAM DATA ==========
 const T=[
-{n:"Duke",s:1,r:"East",rec:"32-2",oe:128.2,de:90.8,tm:65.8,ss:0.741,mm:0.86,xp:0.93},
-{n:"Siena",s:16,r:"East",rec:"23-11",oe:107.2,de:108.9,tm:64.6,ss:0.297,mm:0.52,xp:0.07},
-{n:"Ohio State",s:8,r:"East",rec:"21-12",oe:125.2,de:101.6,tm:66.2,ss:0.727,mm:0.81,xp:0.34},
-{n:"TCU",s:9,r:"East",rec:"22-11",oe:114.9,de:99.6,tm:67.6,ss:0.672,mm:0.76,xp:0.33},
-{n:"St. John's",s:5,r:"East",rec:"28-6",oe:119.8,de:94.1,tm:69.6,ss:0.729,mm:0.62,xp:0.41},
-{n:"Northern Iowa",s:12,r:"East",rec:"23-12",oe:109.7,de:98.6,tm:62.2,ss:0.508,mm:0.68,xp:0.07},
-{n:"Kansas",s:4,r:"East",rec:"23-10",oe:117.8,de:94.4,tm:67.6,ss:0.787,mm:0.16,xp:0.97},
-{n:"Cal Baptist",s:13,r:"East",rec:"25-8",oe:107.5,de:100.3,tm:65.9,ss:0.452,mm:0.65,xp:0.07},
-{n:"Louisville",s:6,r:"East",rec:"23-10",oe:124.0,de:98.2,tm:69.7,ss:0.709,mm:0.49,xp:0.24},
-{n:"South Florida",s:11,r:"East",rec:"25-8",oe:116.8,de:101.4,tm:71.4,ss:0.548,mm:0.76,xp:0.07},
-{n:"Michigan State",s:3,r:"East",rec:"25-7",oe:122.9,de:96.2,tm:66.0,ss:0.747,mm:0.42,xp:0.75},
-{n:"North Dakota State",s:14,r:"East",rec:"27-7",oe:111.4,de:106.0,tm:66.4,ss:0.341,mm:0.46,xp:0.07},
-{n:"UCLA",s:7,r:"East",rec:"23-11",oe:124.5,de:101.8,tm:64.7,ss:0.713,mm:0.67,xp:0.59},
-{n:"UCF",s:10,r:"East",rec:"21-11",oe:120.0,de:105.7,tm:69.1,ss:0.710,mm:0.40,xp:0.24},
-{n:"UConn",s:2,r:"East",rec:"29-5",oe:123.1,de:95.0,tm:64.6,ss:0.714,mm:0.32,xp:0.93},
-{n:"Furman",s:15,r:"East",rec:"22-12",oe:106.9,de:109.0,tm:65.8,ss:0.318,mm:0.44,xp:0.18},
-{n:"Arizona",s:1,r:"West",rec:"32-2",oe:126.9,de:91.4,tm:70.0,ss:0.739,mm:0.58,xp:0.88},
-{n:"LIU",s:16,r:"West",rec:"24-10",oe:103.6,de:109.8,tm:67.8,ss:0.303,mm:0.36,xp:0.07},
-{n:"Villanova",s:8,r:"West",rec:"24-8",oe:119.6,de:100.5,tm:64.9,ss:0.707,mm:0.27,xp:0.34},
-{n:"Utah State",s:9,r:"West",rec:"28-6",oe:123.0,de:102.1,tm:67.6,ss:0.640,mm:0.43,xp:0.47},
-{n:"Wisconsin",s:5,r:"West",rec:"24-10",oe:127.2,de:101.6,tm:68.7,ss:0.734,mm:0.83,xp:0.34},
-{n:"High Point",s:12,r:"West",rec:"30-4",oe:115.7,de:107.5,tm:69.9,ss:0.279,mm:0.59,xp:0.14},
-{n:"Arkansas",s:4,r:"West",rec:"26-8",oe:127.9,de:101.7,tm:71.0,ss:0.746,mm:0.57,xp:0.64},
-{n:"Hawaii",s:13,r:"West",rec:"24-8",oe:106.9,de:101.8,tm:69.6,ss:0.402,mm:0.23,xp:0.07},
-{n:"BYU",s:6,r:"West",rec:"23-11",oe:124.7,de:104.3,tm:69.8,ss:0.748,mm:0.34,xp:0.24},
-{n:"Texas",s:11,r:"West",rec:"18-14",oe:124.0,de:106.4,tm:67.1,ss:0.671,mm:0.42,xp:0.31},
-{n:"NC State",s:11,r:"West",rec:"20-13",oe:124.1,de:104.7,tm:69.1,ss:0.719,mm:0.25,xp:0.52},
-{n:"Gonzaga",s:3,r:"West",rec:"30-3",oe:120.3,de:94.0,tm:68.9,ss:0.627,mm:0.34,xp:0.83},
-{n:"Kennesaw State",s:14,r:"West",rec:"21-13",oe:110.8,de:109.5,tm:71.3,ss:0.422,mm:0.65,xp:0.14},
-{n:"Miami FL",s:7,r:"West",rec:"25-8",oe:121.1,de:101.5,tm:67.9,ss:0.639,mm:0.69,xp:0.59},
-{n:"Missouri",s:10,r:"West",rec:"20-12",oe:119.9,de:103.0,tm:66.4,ss:0.677,mm:0.74,xp:0.17},
-{n:"Purdue",s:2,r:"West",rec:"27-8",oe:133.3,de:100.3,tm:64.4,ss:0.779,mm:0.58,xp:0.90},
-{n:"Queens",s:15,r:"West",rec:"21-13",oe:114.7,de:117.1,tm:69.5,ss:0.383,mm:0.56,xp:0.07},
-{n:"Michigan",s:1,r:"Midwest",rec:"31-3",oe:127.6,de:91.0,tm:71.2,ss:0.803,mm:0.46,xp:0.59},
-{n:"UMBC",s:16,r:"Midwest",rec:"24-8",oe:107.6,de:109.2,tm:66.0,ss:0.223,mm:0.95,xp:0.10},
-{n:"Howard",s:16,r:"Midwest",rec:"23-10",oe:103.5,de:106.2,tm:69.0,ss:0.218,mm:0.80,xp:0.21},
-{n:"Georgia",s:8,r:"Midwest",rec:"22-10",oe:124.3,de:104.8,tm:72.0,ss:0.670,mm:0.56,xp:0.17},
-{n:"Saint Louis",s:9,r:"Midwest",rec:"28-5",oe:119.5,de:102.2,tm:71.0,ss:0.516,mm:0.05,xp:0.07},
-{n:"Texas Tech",s:5,r:"Midwest",rec:"22-10",oe:126.3,de:98.8,tm:66.4,ss:0.760,mm:0.65,xp:0.59},
-{n:"Akron",s:12,r:"Midwest",rec:"29-5",oe:117.2,de:105.4,tm:70.3,ss:0.394,mm:0.51,xp:0.21},
-{n:"Alabama",s:4,r:"Midwest",rec:"23-9",oe:129.5,de:102.8,tm:73.1,ss:0.789,mm:0.45,xp:0.76},
-{n:"Hofstra",s:13,r:"Midwest",rec:"24-10",oe:113.2,de:104.9,tm:64.7,ss:0.430,mm:0.82,xp:0.07},
-{n:"Tennessee",s:6,r:"Midwest",rec:"22-11",oe:121.5,de:95.5,tm:65.2,ss:0.732,mm:0.48,xp:0.65},
-{n:"SMU",s:11,r:"Midwest",rec:"20-13",oe:123.0,de:105.0,tm:68.6,ss:0.713,mm:0.30,xp:0.07},
-{n:"Miami OH",s:11,r:"Midwest",rec:"31-1",oe:116.7,de:107.6,tm:69.9,ss:0.345,mm:0.53,xp:0.07},
-{n:"Virginia",s:3,r:"Midwest",rec:"29-5",oe:122.3,de:95.8,tm:65.6,ss:0.676,mm:0.63,xp:0.69},
-{n:"Wright State",s:14,r:"Midwest",rec:"23-11",oe:112.4,de:109.0,tm:67.0,ss:0.396,mm:0.33,xp:0.07},
-{n:"Kentucky",s:7,r:"Midwest",rec:"21-13",oe:119.9,de:100.0,tm:68.3,ss:0.736,mm:0.52,xp:0.51},
-{n:"Santa Clara",s:10,r:"Midwest",rec:"26-8",oe:125.0,de:103.7,tm:69.3,ss:0.612,mm:0.52,xp:0.07},
-{n:"Iowa State",s:2,r:"Midwest",rec:"27-7",oe:123.8,de:92.6,tm:67.0,ss:0.697,mm:0.55,xp:0.65},
-{n:"Tennessee State",s:15,r:"Midwest",rec:"23-9",oe:107.8,de:111.9,tm:70.1,ss:0.271,mm:0.95,xp:0.07},
-{n:"Florida",s:1,r:"South",rec:"26-7",oe:126.1,de:92.3,tm:70.4,ss:0.758,mm:0.53,xp:0.86},
-{n:"Prairie View A&M",s:16,r:"South",rec:"18-17",oe:101.4,de:111.4,tm:70.9,ss:0.296,mm:0.95,xp:0.07},
-{n:"Lehigh",s:16,r:"South",rec:"18-16",oe:102.6,de:112.8,tm:66.9,ss:0.309,mm:0.66,xp:0.07},
-{n:"Clemson",s:8,r:"South",rec:"24-10",oe:116.6,de:97.0,tm:64.3,ss:0.682,mm:0.26,xp:0.54},
-{n:"Iowa",s:9,r:"South",rec:"21-12",oe:122.1,de:100.2,tm:63.0,ss:0.692,mm:0.24,xp:0.24},
-{n:"Vanderbilt",s:5,r:"South",rec:"26-8",oe:127.5,de:99.3,tm:69.0,ss:0.738,mm:0.65,xp:0.17},
-{n:"McNeese",s:12,r:"South",rec:"28-5",oe:113.2,de:102.2,tm:66.1,ss:0.424,mm:0.67,xp:0.07},
-{n:"Nebraska",s:4,r:"South",rec:"26-6",oe:117.2,de:93.5,tm:66.8,ss:0.695,mm:0.20,xp:0.14},
-{n:"Troy",s:13,r:"South",rec:"22-11",oe:110.7,de:109.0,tm:65.1,ss:0.403,mm:0.41,xp:0.07},
-{n:"North Carolina",s:6,r:"South",rec:"24-8",oe:121.4,de:100.0,tm:68.0,ss:0.703,mm:0.38,xp:0.90},
-{n:"VCU",s:11,r:"South",rec:"27-7",oe:119.3,de:103.1,tm:68.7,ss:0.565,mm:0.68,xp:0.24},
-{n:"Illinois",s:3,r:"South",rec:"24-8",oe:131.9,de:98.2,tm:65.7,ss:0.738,mm:0.60,xp:0.59},
-{n:"Penn",s:14,r:"South",rec:"18-11",oe:106.6,de:105.4,tm:69.0,ss:0.464,mm:0.73,xp:0.07},
-{n:"Saint Mary's",s:7,r:"South",rec:"27-5",oe:119.4,de:97.6,tm:65.3,ss:0.600,mm:0.67,xp:0.40},
-{n:"Texas A&M",s:10,r:"South",rec:"21-11",oe:119.9,de:101.4,tm:71.0,ss:0.673,mm:0.18,xp:0.24},
-{n:"Houston",s:2,r:"South",rec:"28-6",oe:125.4,de:92.4,tm:63.3,ss:0.731,mm:0.28,xp:0.97},
-{n:"Idaho",s:15,r:"South",rec:"21-14",oe:108.8,de:106.2,tm:67.4,ss:0.425,mm:0.85,xp:0.07},
+{n:"Duke",s:1,r:"East",rec:"32-2",oe:128.2,de:90.8,tm:65.8,ss:0.741,mm:0.86,xp:0.93,tv:0.90},
+{n:"Siena",s:16,r:"East",rec:"23-11",oe:107.2,de:108.9,tm:64.6,ss:0.297,mm:0.52,xp:0.07,tv:0.79},
+{n:"Ohio State",s:8,r:"East",rec:"21-12",oe:125.2,de:101.6,tm:66.2,ss:0.727,mm:0.81,xp:0.34,tv:0.87},
+{n:"TCU",s:9,r:"East",rec:"22-11",oe:114.9,de:99.6,tm:67.6,ss:0.672,mm:0.76,xp:0.33,tv:0.75},
+{n:"St. John's",s:5,r:"East",rec:"28-6",oe:119.8,de:94.1,tm:69.6,ss:0.729,mm:0.62,xp:0.41,tv:0.99},
+{n:"Northern Iowa",s:12,r:"East",rec:"23-12",oe:109.7,de:98.6,tm:62.2,ss:0.508,mm:0.68,xp:0.07,tv:0.81},
+{n:"Kansas",s:4,r:"East",rec:"23-10",oe:117.8,de:94.4,tm:67.6,ss:0.787,mm:0.16,xp:0.97,tv:0.23},
+{n:"Cal Baptist",s:13,r:"East",rec:"25-8",oe:107.5,de:100.3,tm:65.9,ss:0.452,mm:0.65,xp:0.07,tv:0.51},
+{n:"Louisville",s:6,r:"East",rec:"23-10",oe:124.0,de:98.2,tm:69.7,ss:0.709,mm:0.49,xp:0.24,tv:0.88},
+{n:"South Florida",s:11,r:"East",rec:"25-8",oe:116.8,de:101.4,tm:71.4,ss:0.548,mm:0.76,xp:0.07,tv:0.84},
+{n:"Michigan State",s:3,r:"East",rec:"25-7",oe:122.9,de:96.2,tm:66.0,ss:0.747,mm:0.42,xp:0.75,tv:0.91},
+{n:"North Dakota State",s:14,r:"East",rec:"27-7",oe:111.4,de:106.0,tm:66.4,ss:0.341,mm:0.46,xp:0.07,tv:0.77},
+{n:"UCLA",s:7,r:"East",rec:"23-11",oe:124.5,de:101.8,tm:64.7,ss:0.713,mm:0.67,xp:0.59,tv:0.47},
+{n:"UCF",s:10,r:"East",rec:"21-11",oe:120.0,de:105.7,tm:69.1,ss:0.710,mm:0.40,xp:0.24,tv:0.82},
+{n:"UConn",s:2,r:"East",rec:"29-5",oe:123.1,de:95.0,tm:64.6,ss:0.714,mm:0.32,xp:0.93,tv:0.97},
+{n:"Furman",s:15,r:"East",rec:"22-12",oe:106.9,de:109.0,tm:65.8,ss:0.318,mm:0.44,xp:0.18,tv:0.89},
+{n:"Arizona",s:1,r:"West",rec:"32-2",oe:126.9,de:91.4,tm:70.0,ss:0.739,mm:0.58,xp:0.88,tv:0.54},
+{n:"LIU",s:16,r:"West",rec:"24-10",oe:103.6,de:109.8,tm:67.8,ss:0.303,mm:0.36,xp:0.07,tv:0.07},
+{n:"Villanova",s:8,r:"West",rec:"24-8",oe:119.6,de:100.5,tm:64.9,ss:0.707,mm:0.27,xp:0.34,tv:0.09},
+{n:"Utah State",s:9,r:"West",rec:"28-6",oe:123.0,de:102.1,tm:67.6,ss:0.640,mm:0.43,xp:0.47,tv:0.47},
+{n:"Wisconsin",s:5,r:"West",rec:"24-10",oe:127.2,de:101.6,tm:68.7,ss:0.734,mm:0.83,xp:0.34,tv:0.25},
+{n:"High Point",s:12,r:"West",rec:"30-4",oe:115.7,de:107.5,tm:69.9,ss:0.279,mm:0.59,xp:0.14,tv:0.14},
+{n:"Arkansas",s:4,r:"West",rec:"26-8",oe:127.9,de:101.7,tm:71.0,ss:0.746,mm:0.57,xp:0.64,tv:0.22},
+{n:"Hawaii",s:13,r:"West",rec:"24-8",oe:106.9,de:101.8,tm:69.6,ss:0.402,mm:0.23,xp:0.07,tv:0.00},
+{n:"BYU",s:6,r:"West",rec:"23-11",oe:124.7,de:104.3,tm:69.8,ss:0.748,mm:0.34,xp:0.24,tv:0.44},
+{n:"Texas",s:11,r:"West",rec:"18-14",oe:124.0,de:106.4,tm:67.1,ss:0.671,mm:0.42,xp:0.31,tv:0.20},
+{n:"NC State",s:11,r:"West",rec:"20-13",oe:124.1,de:104.7,tm:69.1,ss:0.719,mm:0.25,xp:0.52,tv:0.05},
+{n:"Gonzaga",s:3,r:"West",rec:"30-3",oe:120.3,de:94.0,tm:68.9,ss:0.627,mm:0.34,xp:0.83,tv:0.39},
+{n:"Kennesaw State",s:14,r:"West",rec:"21-13",oe:110.8,de:109.5,tm:71.3,ss:0.422,mm:0.65,xp:0.14,tv:0.20},
+{n:"Miami FL",s:7,r:"West",rec:"25-8",oe:121.1,de:101.5,tm:67.9,ss:0.639,mm:0.69,xp:0.59,tv:0.09},
+{n:"Missouri",s:10,r:"West",rec:"20-12",oe:119.9,de:103.0,tm:66.4,ss:0.677,mm:0.74,xp:0.17,tv:0.30},
+{n:"Purdue",s:2,r:"West",rec:"27-8",oe:133.3,de:100.3,tm:64.4,ss:0.779,mm:0.58,xp:0.90,tv:0.28},
+{n:"Queens",s:15,r:"West",rec:"21-13",oe:114.7,de:117.1,tm:69.5,ss:0.383,mm:0.56,xp:0.07,tv:0.20},
+{n:"Michigan",s:1,r:"Midwest",rec:"31-3",oe:127.6,de:91.0,tm:71.2,ss:0.803,mm:0.46,xp:0.59,tv:0.96},
+{n:"UMBC",s:16,r:"Midwest",rec:"24-8",oe:107.6,de:109.2,tm:66.0,ss:0.223,mm:0.95,xp:0.10,tv:0.95},
+{n:"Howard",s:16,r:"Midwest",rec:"23-10",oe:103.5,de:106.2,tm:69.0,ss:0.218,mm:0.80,xp:0.21,tv:0.95},
+{n:"Georgia",s:8,r:"Midwest",rec:"22-10",oe:124.3,de:104.8,tm:72.0,ss:0.670,mm:0.56,xp:0.17,tv:0.86},
+{n:"Saint Louis",s:9,r:"Midwest",rec:"28-5",oe:119.5,de:102.2,tm:71.0,ss:0.516,mm:0.05,xp:0.07,tv:0.86},
+{n:"Texas Tech",s:5,r:"Midwest",rec:"22-10",oe:126.3,de:98.8,tm:66.4,ss:0.760,mm:0.65,xp:0.59,tv:0.89},
+{n:"Akron",s:12,r:"Midwest",rec:"29-5",oe:117.2,de:105.4,tm:70.3,ss:0.394,mm:0.51,xp:0.21,tv:0.95},
+{n:"Alabama",s:4,r:"Midwest",rec:"23-9",oe:129.5,de:102.8,tm:73.1,ss:0.789,mm:0.45,xp:0.76,tv:0.97},
+{n:"Hofstra",s:13,r:"Midwest",rec:"24-10",oe:113.2,de:104.9,tm:64.7,ss:0.430,mm:0.82,xp:0.07,tv:0.85},
+{n:"Tennessee",s:6,r:"Midwest",rec:"22-11",oe:121.5,de:95.5,tm:65.2,ss:0.732,mm:0.48,xp:0.65,tv:0.97},
+{n:"SMU",s:11,r:"Midwest",rec:"20-13",oe:123.0,de:105.0,tm:68.6,ss:0.713,mm:0.30,xp:0.07,tv:0.93},
+{n:"Miami OH",s:11,r:"Midwest",rec:"31-1",oe:116.7,de:107.6,tm:69.9,ss:0.345,mm:0.53,xp:0.07,tv:0.99},
+{n:"Virginia",s:3,r:"Midwest",rec:"29-5",oe:122.3,de:95.8,tm:65.6,ss:0.676,mm:0.63,xp:0.69,tv:0.91},
+{n:"Wright State",s:14,r:"Midwest",rec:"23-11",oe:112.4,de:109.0,tm:67.0,ss:0.396,mm:0.33,xp:0.07,tv:0.86},
+{n:"Kentucky",s:7,r:"Midwest",rec:"21-13",oe:119.9,de:100.0,tm:68.3,ss:0.736,mm:0.52,xp:0.51,tv:0.99},
+{n:"Santa Clara",s:10,r:"Midwest",rec:"26-8",oe:125.0,de:103.7,tm:69.3,ss:0.612,mm:0.52,xp:0.07,tv:0.67},
+{n:"Iowa State",s:2,r:"Midwest",rec:"27-7",oe:123.8,de:92.6,tm:67.0,ss:0.697,mm:0.55,xp:0.65,tv:0.99},
+{n:"Tennessee State",s:15,r:"Midwest",rec:"23-9",oe:107.8,de:111.9,tm:70.1,ss:0.271,mm:0.95,xp:0.07,tv:1.00},
+{n:"Florida",s:1,r:"South",rec:"26-7",oe:126.1,de:92.3,tm:70.4,ss:0.758,mm:0.53,xp:0.86,tv:0.75},
+{n:"Prairie View A&M",s:16,r:"South",rec:"18-17",oe:101.4,de:111.4,tm:70.9,ss:0.296,mm:0.95,xp:0.07,tv:0.59},
+{n:"Lehigh",s:16,r:"South",rec:"18-16",oe:102.6,de:112.8,tm:66.9,ss:0.309,mm:0.66,xp:0.07,tv:0.56},
+{n:"Clemson",s:8,r:"South",rec:"24-10",oe:116.6,de:97.0,tm:64.3,ss:0.682,mm:0.26,xp:0.54,tv:0.67},
+{n:"Iowa",s:9,r:"South",rec:"21-12",oe:122.1,de:100.2,tm:63.0,ss:0.692,mm:0.24,xp:0.24,tv:0.53},
+{n:"Vanderbilt",s:5,r:"South",rec:"26-8",oe:127.5,de:99.3,tm:69.0,ss:0.738,mm:0.65,xp:0.17,tv:0.73},
+{n:"McNeese",s:12,r:"South",rec:"28-5",oe:113.2,de:102.2,tm:66.1,ss:0.424,mm:0.67,xp:0.07,tv:0.76},
+{n:"Nebraska",s:4,r:"South",rec:"26-6",oe:117.2,de:93.5,tm:66.8,ss:0.695,mm:0.20,xp:0.14,tv:0.78},
+{n:"Troy",s:13,r:"South",rec:"22-11",oe:110.7,de:109.0,tm:65.1,ss:0.403,mm:0.41,xp:0.07,tv:0.70},
+{n:"North Carolina",s:6,r:"South",rec:"24-8",oe:121.4,de:100.0,tm:68.0,ss:0.703,mm:0.38,xp:0.90,tv:0.72},
+{n:"VCU",s:11,r:"South",rec:"27-7",oe:119.3,de:103.1,tm:68.7,ss:0.565,mm:0.68,xp:0.24,tv:0.69},
+{n:"Illinois",s:3,r:"South",rec:"24-8",oe:131.9,de:98.2,tm:65.7,ss:0.738,mm:0.60,xp:0.59,tv:0.73},
+{n:"Penn",s:14,r:"South",rec:"18-11",oe:106.6,de:105.4,tm:69.0,ss:0.464,mm:0.73,xp:0.07,tv:0.58},
+{n:"Saint Mary's",s:7,r:"South",rec:"27-5",oe:119.4,de:97.6,tm:65.3,ss:0.600,mm:0.67,xp:0.40,tv:0.55},
+{n:"Texas A&M",s:10,r:"South",rec:"21-11",oe:119.9,de:101.4,tm:71.0,ss:0.673,mm:0.18,xp:0.24,tv:0.79},
+{n:"Houston",s:2,r:"South",rec:"28-6",oe:125.4,de:92.4,tm:63.3,ss:0.731,mm:0.28,xp:0.97,tv:0.60},
+{n:"Idaho",s:15,r:"South",rec:"21-14",oe:108.8,de:106.2,tm:67.4,ss:0.425,mm:0.85,xp:0.07,tv:0.26},
 ];
 
 // Expand to full team objects
-const TEAMS = T.map(t => ({name:t.n,seed:t.s,region:t.r,record:t.rec,adjOE:t.oe,adjDE:t.de,tempo:t.tm,sos:t.ss,momentum:t.mm,experience:t.xp}));
+const TEAMS = T.map(t => ({name:t.n,seed:t.s,region:t.r,record:t.rec,adjOE:t.oe,adjDE:t.de,tempo:t.tm,sos:t.ss,momentum:t.mm,experience:t.xp,travel:t.tv}));
 const TM = {}; // team map
 TEAMS.forEach(t => TM[t.name] = t);
 
@@ -479,6 +481,7 @@ const WD = [
   {id:"mom",label:"Momentum (Last 10 Games)",desc:"Data-driven: compares each team's last-10-game efficiency margin to their season average (from Barttorvik H-Rank). Duke +7.3, Wisconsin +6.7 = peaking. Kansas -6.8, Houston -4.4 = fading. Higher weight amplifies these trends.",min:0,max:5,step:0.25,v:2.0},
   {id:"exp",label:"Experience (Tournament Pedigree)",desc:"Data-driven: composite of tournament appearances in last 5 years (35%), deepest recent run (35%), and program pedigree (30%). Kansas/Houston 0.97, Duke/UConn 0.93 at the top. First-time teams like Cal Baptist/Queens at 0.07.",min:0,max:5,step:0.25,v:2.0},
   {id:"var",label:"Game Variance (σ)",desc:"Game-to-game randomness. 0=deterministic, 1=real basketball (~11pt σ), 2+=Cinderella mode. THIS IS THE UPSET LEVER.",min:0,max:5,step:0.25,v:1.0},
+  {id:"trav",label:"Travel Burden",desc:"Data-driven: cumulative miles from campus through R64, S16, to Final Four in Indianapolis. Hawaii travels 5,088mi; Tennessee State travels 678mi. Higher weight penalizes West Coast and far-flung teams. No West Coast champion since Arizona 1997.",min:0,max:5,step:0.25,v:1.5},
 ];
 const W = {};
 WD.forEach(d => W[d.id] = d.v);
@@ -500,7 +503,7 @@ function margin(a,b) {
   const bp = b.adjOE * a.adjDE / AVG;
   const pos = (a.tempo + b.tempo) / 2;
   const raw = (ap - bp) * pos / 100;
-  return raw * W.eff + (a.sos-b.sos)*W.sos + (a.momentum-b.momentum)*W.mom + (a.experience-b.experience)*W.exp;
+  return raw * W.eff + (a.sos-b.sos)*W.sos + (a.momentum-b.momentum)*W.mom + (a.experience-b.experience)*W.exp + (a.travel-b.travel)*(W.trav||0);
 }
 
 function ncdf(z) {
@@ -961,7 +964,7 @@ function updWR() {
   const dm=margin(TM.Duke,TM.Siena), dp=ncdf(dm/sd)*100;
   const sm=margin(TM["St. John's"],TM["Northern Iowa"]), sp=ncdf(sm/sd)*100;
   const om=margin(TM["Ohio State"],TM.TCU), op=ncdf(om/sd)*100;
-  const readout = `eff=${W.eff} sos=${W.sos} mom=${W.mom} exp=${W.exp} var=${W['var']} | σ=${sd.toFixed(1)}pts | Duke-Siena: ${dp.toFixed(0)}% StJ-NIowa: ${sp.toFixed(0)}% OSU-TCU: ${op.toFixed(0)}%`;
+  const readout = `eff=${W.eff} sos=${W.sos} mom=${W.mom} exp=${W.exp} trav=${W.trav||0} var=${W['var']} | σ=${sd.toFixed(1)}pts | Duke-Siena: ${dp.toFixed(0)}% StJ-NIowa: ${sp.toFixed(0)}% OSU-TCU: ${op.toFixed(0)}%`;
   
   // Update both readout locations
   document.getElementById('weight-readout').innerHTML = `<b>Active:</b> ${readout}`;
@@ -979,6 +982,7 @@ function renderData() {
       <td><input type="number" value="${t.sos}" step="0.05" onchange="TM['${t.name.replace(/'/g,"\\'")}'].sos=+this.value"></td>
       <td><input type="number" value="${t.momentum}" step="0.05" onchange="TM['${t.name.replace(/'/g,"\\'")}'].momentum=+this.value"></td>
       <td><input type="number" value="${t.experience}" step="0.05" onchange="TM['${t.name.replace(/'/g,"\\'")}'].experience=+this.value"></td>
+      <td><input type="number" value="${t.travel}" step="0.05" onchange="TM['${t.name.replace(/'/g,"\\'")}'].travel=+this.value"></td>
     </tr>`).join('');
 }
 
